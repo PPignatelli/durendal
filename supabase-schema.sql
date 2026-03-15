@@ -188,11 +188,13 @@ begin
   );
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function public.handle_new_user() to supabase_auth_admin;
 
 create trigger on_auth_user_created
   after insert on auth.users
-  for each row execute function handle_new_user();
+  for each row execute function public.handle_new_user();
 
 -- Update certification statuses based on dates
 create or replace function update_cert_statuses()
