@@ -427,9 +427,10 @@ const pass=document.getElementById('loginPassword').value;
 if(!email||!pass)return showToast('Email & password required','error');
 if(isSignupMode){
 const name=document.getElementById('signupName').value.trim();
-const{error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
+const{data,error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
 if(error)return showToast(error.message,'error');
-showToast('Compte créé ! Vérifiez votre email.','info');
+currentUser=data.user;
+initApp();
 }else{
 const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
 if(error)return showToast(error.message,'error');
