@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>BelForce Ready</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1B2A4A">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+--navy-900:#0A1628;--navy-800:#0F1D32;--navy-700:#1B2A4A;--navy-600:#2D4A7A;
+--blue-500:#3B82F6;--blue-400:#60A5FA;--green-500:#10B981;--green-400:#34D399;
+--amber-500:#F59E0B;--red-500:#EF4444;--purple-500:#8B5CF6;
+--gray-50:#F8FAFC;--gray-100:#F1F5F9;--gray-200:#E2E8F0;--gray-300:#CBD5E1;
+--gray-400:#94A3B8;--gray-500:#64748B;--gray-600:#475569;--gray-700:#334155;
+--gray-800:#1E293B;--gray-900:#0F172A;
+--bg:var(--gray-50);--bg-card:#fff;--bg-sidebar:var(--navy-800);--bg-topbar:#fff;
+--text:var(--gray-900);--text-sec:var(--gray-500);--text-side:#E2E8F0;
+--border:var(--gray-200);--shadow:0 1px 3px rgba(0,0,0,.08);--shadow-lg:0 4px 12px rgba(0,0,0,.12);
+--radius:8px;--radius-lg:12px;--sidebar-w:250px;--topbar-h:56px;
+--st-apte:var(--green-500);--st-inapte:var(--red-500);--st-mission:var(--blue-500);
+--st-conge:var(--amber-500);--st-formation:var(--purple-500);--st-mute:var(--gray-400);
+}
+[data-theme="dark"]{
+--bg:var(--gray-900);--bg-card:var(--gray-800);--bg-topbar:var(--gray-800);
+--text:var(--gray-100);--text-sec:var(--gray-400);--border:var(--gray-700);
+--shadow:0 1px 3px rgba(0,0,0,.3);--shadow-lg:0 4px 12px rgba(0,0,0,.4);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh}
+a{color:var(--blue-500);text-decoration:none}
+/* LOGIN */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,var(--navy-900),var(--navy-700))}
+.login-card{background:var(--bg-card);border-radius:var(--radius-lg);padding:2.5rem;width:100%;max-width:400px;box-shadow:var(--shadow-lg)}
+.login-card h1{font-size:1.5rem;margin-bottom:.25rem;color:var(--navy-700)}
+.login-card p{color:var(--text-sec);margin-bottom:1.5rem;font-size:.875rem}
+.login-card .logo-icon{width:48px;height:48px;margin-bottom:1rem}
+/* LAYOUT */
+.app{display:none;height:100vh;overflow:hidden}
+.app.active{display:flex}
+.sidebar{width:var(--sidebar-w);background:var(--bg-sidebar);color:var(--text-side);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;transition:transform .2s}
+.sidebar .brand{padding:1.25rem;display:flex;align-items:center;gap:.75rem;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar .brand svg{width:32px;height:32px;flex-shrink:0}
+.sidebar .brand span{font-weight:700;font-size:1.1rem}
+.nav-items{flex:1;padding:.5rem 0}
+.nav-item{display:flex;align-items:center;gap:.75rem;padding:.65rem 1.25rem;cursor:pointer;transition:background .15s;font-size:.9rem;border:none;background:none;color:var(--text-side);width:100%;text-align:left}
+.nav-item:hover{background:rgba(255,255,255,.08)}
+.nav-item.active{background:rgba(255,255,255,.12);border-right:3px solid var(--blue-400)}
+.nav-item svg{width:20px;height:20px;opacity:.7;flex-shrink:0}
+.sidebar-footer{padding:1rem 1.25rem;border-top:1px solid rgba(255,255,255,.1);font-size:.8rem}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:var(--topbar-h);background:var(--bg-topbar);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 1.5rem;gap:1rem;flex-shrink:0}
+.topbar .page-title{font-size:1.1rem;font-weight:600;flex:1}
+.topbar-search{padding:.45rem .75rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);width:220px;font-size:.85rem}
+.topbar-btn{background:none;border:1px solid var(--border);border-radius:var(--radius);padding:.4rem .65rem;cursor:pointer;color:var(--text);font-size:.8rem;display:flex;align-items:center;gap:.35rem}
+.topbar-btn:hover{background:var(--bg)}
+.hamburger{display:none;background:none;border:none;color:var(--text);cursor:pointer;padding:.25rem}
+.content{flex:1;overflow-y:auto;padding:1.5rem}
+.page{display:none}
+.page.active{display:block}
+/* COMPONENTS */
+.btn{padding:.5rem 1rem;border-radius:var(--radius);font-size:.85rem;font-weight:500;cursor:pointer;border:none;transition:opacity .15s;display:inline-flex;align-items:center;gap:.4rem}
+.btn-primary{background:var(--navy-700);color:#fff}
+.btn-primary:hover{background:var(--navy-600)}
+.btn-success{background:var(--green-500);color:#fff}
+.btn-danger{background:var(--red-500);color:#fff}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{background:var(--bg)}
+.btn-sm{padding:.3rem .6rem;font-size:.78rem}
+.card{background:var(--bg-card);border-radius:var(--radius-lg);padding:1.25rem;box-shadow:var(--shadow);border:1px solid var(--border)}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
+.stat-card{background:var(--bg-card);border-radius:var(--radius-lg);padding:1rem 1.25rem;box-shadow:var(--shadow);border:1px solid var(--border);display:flex;align-items:center;gap:1rem}
+.stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-icon svg{width:22px;height:22px;color:#fff}
+.stat-val{font-size:1.5rem;font-weight:700;line-height:1.2}
+.stat-label{font-size:.78rem;color:var(--text-sec)}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+thead th{text-align:left;padding:.6rem .75rem;border-bottom:2px solid var(--border);font-weight:600;color:var(--text-sec);font-size:.78rem;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;white-space:nowrap;user-select:none}
+thead th:hover{color:var(--text)}
+tbody td{padding:.6rem .75rem;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr:hover{background:rgba(59,130,246,.04)}
+.badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.badge-green{background:#D1FAE5;color:#065F46}
+.badge-red{background:#FEE2E2;color:#991B1B}
+.badge-amber{background:#FEF3C7;color:#92400E}
+.badge-blue{background:#DBEAFE;color:#1E40AF}
+.badge-purple{background:#EDE9FE;color:#5B21B6}
+.badge-gray{background:var(--gray-200);color:var(--gray-600)}
+[data-theme="dark"] .badge-green{background:#064E3B;color:#6EE7B7}
+[data-theme="dark"] .badge-red{background:#7F1D1D;color:#FCA5A5}
+[data-theme="dark"] .badge-amber{background:#78350F;color:#FCD34D}
+[data-theme="dark"] .badge-blue{background:#1E3A5F;color:#93C5FD}
+[data-theme="dark"] .badge-purple{background:#3B0764;color:#C4B5FD}
+[data-theme="dark"] .badge-gray{background:var(--gray-700);color:var(--gray-300)}
+.form-group{margin-bottom:1rem}
+.form-group label{display:block;font-size:.82rem;font-weight:500;margin-bottom:.3rem;color:var(--text-sec)}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:var(--radius);font-size:.85rem;background:var(--bg);color:var(--text)}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--blue-500);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal{background:var(--bg-card);border-radius:var(--radius-lg);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--border)}
+.modal-header h3{font-size:1rem}
+.modal-close{background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text-sec);padding:.25rem}
+.modal-body{padding:1.5rem}
+.modal-footer{display:flex;justify-content:flex-end;gap:.5rem;padding:1rem 1.5rem;border-top:1px solid var(--border)}
+/* DETAIL PANEL */
+.detail-panel{position:fixed;top:0;right:-450px;width:450px;height:100vh;background:var(--bg-card);border-left:1px solid var(--border);box-shadow:var(--shadow-lg);z-index:90;transition:right .25s;overflow-y:auto}
+.detail-panel.open{right:0}
+.detail-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--border)}
+.detail-body{padding:1.5rem}
+.detail-section{margin-bottom:1.5rem}
+.detail-section h4{font-size:.82rem;text-transform:uppercase;color:var(--text-sec);margin-bottom:.75rem;letter-spacing:.3px}
+.detail-row{display:flex;justify-content:space-between;padding:.4rem 0;font-size:.85rem;border-bottom:1px solid var(--border)}
+.detail-row span:first-child{color:var(--text-sec)}
+/* GAUGE */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;padding:1.5rem}
+.gauge-svg{width:180px;height:180px;transform:rotate(-90deg)}
+.gauge-bg{fill:none;stroke:var(--border);stroke-width:12}
+.gauge-fill{fill:none;stroke-width:12;stroke-linecap:round;transition:stroke-dashoffset .8s ease}
+.gauge-text{font-size:2rem;font-weight:700;text-anchor:middle;dominant-baseline:central;fill:var(--text)}
+.gauge-label{font-size:.85rem;color:var(--text-sec);margin-top:.5rem}
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap}
+.toolbar input,.toolbar select{padding:.45rem .7rem;border:1px solid var(--border);border-radius:var(--radius);font-size:.83rem;background:var(--bg);color:var(--text)}
+.toolbar input{width:200px}
+/* PAGINATION */
+.pagination{display:flex;align-items:center;justify-content:center;gap:.35rem;margin-top:1rem;font-size:.83rem}
+.pagination button{padding:.3rem .6rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);color:var(--text);cursor:pointer;font-size:.8rem}
+.pagination button.active{background:var(--navy-700);color:#fff;border-color:var(--navy-700)}
+.pagination button:disabled{opacity:.4;cursor:default}
+/* MATRIX */
+.matrix-wrap{overflow-x:auto}
+.matrix-wrap table{font-size:.78rem}
+.matrix-wrap th,.matrix-wrap td{padding:.4rem .5rem;text-align:center;min-width:80px}
+.matrix-wrap th:first-child,.matrix-wrap td:first-child{text-align:left;position:sticky;left:0;background:var(--bg-card);z-index:1;min-width:180px}
+.matrix-cell{width:24px;height:24px;border-radius:50%;display:inline-block}
+.matrix-cell.valid{background:var(--green-500)}
+.matrix-cell.expiring{background:var(--amber-500)}
+.matrix-cell.expired{background:var(--red-500)}
+.matrix-cell.missing{background:var(--gray-300)}
+/* ALERT CARDS */
+.alert-section{margin-bottom:2rem}
+.alert-section h3{font-size:.95rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem}
+.alert-list{display:grid;gap:.5rem}
+.alert-card{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-card)}
+.alert-info{display:flex;flex-direction:column;gap:.15rem}
+.alert-name{font-weight:600;font-size:.85rem}
+.alert-detail{font-size:.78rem;color:var(--text-sec)}
+/* BAR CHART */
+.bar-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;font-size:.83rem}
+.bar-label{width:120px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.bar-track{flex:1;height:24px;background:var(--gray-200);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .5s;display:flex;align-items:center;padding-left:.5rem;font-size:.72rem;color:#fff;font-weight:600}
+/* TOAST */
+.toast-container{position:fixed;top:1rem;right:1rem;z-index:200;display:flex;flex-direction:column;gap:.5rem}
+.toast{padding:.75rem 1.25rem;border-radius:var(--radius);font-size:.85rem;font-weight:500;box-shadow:var(--shadow-lg);animation:slideIn .25s;display:flex;align-items:center;gap:.5rem;min-width:250px}
+.toast-success{background:#065F46;color:#D1FAE5}
+.toast-error{background:#991B1B;color:#FEE2E2}
+.toast-warning{background:#92400E;color:#FEF3C7}
+.toast-info{background:#1E40AF;color:#DBEAFE}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+/* TABS */
+.tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:1.5rem}
+.tab{padding:.6rem 1.25rem;cursor:pointer;font-size:.85rem;font-weight:500;color:var(--text-sec);border-bottom:2px solid transparent;margin-bottom:-2px;background:none;border-top:none;border-left:none;border-right:none}
+.tab.active{color:var(--navy-700);border-bottom-color:var(--navy-700)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+/* RESPONSIVE */
+@media(max-width:768px){
+.sidebar{position:fixed;z-index:80;height:100vh;transform:translateX(-100%)}
+.sidebar.open{transform:translateX(0)}
+.hamburger{display:block}
+.topbar-search{width:140px}
+.content{padding:1rem}
+.stat-grid{grid-template-columns:1fr 1fr}
+.form-row{grid-template-columns:1fr}
+.detail-panel{width:100%}
+.toolbar{flex-direction:column;align-items:stretch}
+.toolbar input{width:100%}
+}
+/* PRINT */
+@media print{
+.sidebar,.topbar,.toolbar,.btn,.pagination,.toast-container,.modal-overlay,.detail-panel{display:none!important}
+.app{display:block!important}
+.content{padding:0!important;overflow:visible!important}
+.page{display:block!important}
+.card{box-shadow:none!important;border:1px solid #ddd!important}
+}
+/* SKELETON */
+.skeleton{background:linear-gradient(90deg,var(--gray-200) 25%,var(--gray-100) 50%,var(--gray-200) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:var(--radius)}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skeleton-line{height:14px;margin-bottom:.5rem;border-radius:4px}
+.skeleton-card{height:80px;border-radius:var(--radius-lg)}
+</style>
+</head>
+<body>
+<!-- LOGIN -->
+<div id="loginPage" class="login-wrap">
+<div class="login-card">
+<svg class="logo-icon" viewBox="0 0 512 512"><path d="M256 16C141 16 48 109 48 224c0 96 80 208 208 272 128-64 208-176 208-272C464 109 371 16 256 16z" fill="#1B2A4A"/><path d="M230 320l-70-70 30-30 40 40 90-90 30 30z" fill="#10B981"/></svg>
+<h1>BelForce Ready</h1>
+<p id="loginSubtitle">Force Readiness Tracker</p>
+<div id="loginForm">
+<div class="form-group"><label>Email</label><input type="email" id="loginEmail"></div>
+<div class="form-group"><label id="lblPassword">Mot de passe</label><input type="password" id="loginPassword"></div>
+<div id="signupFields" style="display:none">
+<div class="form-group"><label id="lblFullName">Nom complet</label><input type="text" id="signupName"></div>
+</div>
+<button class="btn btn-primary" style="width:100%;margin-top:.5rem" onclick="handleAuth()" id="authBtn">Connexion</button>
+<p style="text-align:center;margin-top:1rem;font-size:.82rem">
+<a href="#" onclick="toggleAuthMode()" id="authToggle">Créer un compte</a>
+</p>
+</div>
+</div>
+</div>
+<!-- APP -->
+<div id="app" class="app">
+<nav id="sidebar" class="sidebar">
+<div class="brand">
+<svg viewBox="0 0 512 512"><path d="M256 16C141 16 48 109 48 224c0 96 80 208 208 272 128-64 208-176 208-272C464 109 371 16 256 16z" fill="#3B82F6"/><path d="M230 320l-70-70 30-30 40 40 90-90 30 30z" fill="#10B981"/></svg>
+<span>BelForce Ready</span>
+</div>
+<div class="nav-items" id="navItems"></div>
+<div class="sidebar-footer" id="sidebarFooter"></div>
+</nav>
+<div class="main">
+<header class="topbar" id="topbar">
+<button class="hamburger" onclick="toggleSidebar()">&#9776;</button>
+<span class="page-title" id="pageTitle"></span>
+<input type="search" class="topbar-search" id="globalSearch" placeholder="Rechercher...">
+<button class="topbar-btn" onclick="toggleLang()" id="langBtn">NL</button>
+<button class="topbar-btn" onclick="toggleTheme()" id="themeBtn">&#9790;</button>
+</header>
+<div class="content" id="content">
+<section id="page-dashboard" class="page active"></section>
+<section id="page-personnel" class="page"></section>
+<section id="page-certifications" class="page"></section>
+<section id="page-alerts" class="page"></section>
+<section id="page-reports" class="page"></section>
+<section id="page-deployments" class="page"></section>
+<section id="page-settings" class="page"></section>
+</div>
+</div>
+</div>
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+<div class="modal" id="modalContent"></div>
+</div>
+<!-- DETAIL PANEL -->
+<div class="detail-panel" id="detailPanel"></div>
+<!-- TOAST -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===== CONFIG ===== */
+const SUPABASE_URL='YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY='YOUR_SUPABASE_ANON_KEY';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const PAGE_SIZE=25;
+
+/* ===== STATE ===== */
+let currentUser=null,currentLang=localStorage.getItem('bf_lang')||'fr',currentPage='dashboard';
+let appPersonnel=[],appUnits=[],appCertTypes=[],appCerts=[],appDeployments=[];
+let persFilter={search:'',status:'',unit:''},persSort={field:'last_name',dir:'asc'},persPage=1;
+let isSignupMode=false;
+
+/* ===== RANKS ===== */
+const RANKS=[
+{id:'sdt',fr:'Soldat',nl:'Soldaat'},{id:'1sdt',fr:'Premier Soldat',nl:'Eerste Soldaat'},
+{id:'cpl',fr:'Caporal',nl:'Korporaal'},{id:'1cpl',fr:'Premier Caporal',nl:'Eerste Korporaal'},
+{id:'sgt',fr:'Sergent',nl:'Sergeant'},{id:'1sgt',fr:'Premier Sergent',nl:'Eerste Sergeant'},
+{id:'adj',fr:'Adjudant',nl:'Adjudant'},{id:'adjchef',fr:'Adjudant-Chef',nl:'Adjudant-Chef'},
+{id:'adjmaj',fr:'Adjudant-Major',nl:'Adjudant-Majoor'},
+{id:'slt',fr:'Sous-Lieutenant',nl:'Onderluitenant'},{id:'lt',fr:'Lieutenant',nl:'Luitenant'},
+{id:'cpt',fr:'Capitaine',nl:'Kapitein'},{id:'maj',fr:'Commandant',nl:'Majoor'},
+{id:'ltcol',fr:'Lieutenant-Colonel',nl:'Luitenant-Kolonel'},{id:'col',fr:'Colonel',nl:'Kolonel'},
+{id:'bgen',fr:'Général de Brigade',nl:'Brigadegeneraal'}
+];
+
+/* ===== i18n ===== */
+const T={fr:{
+dashboard:'Tableau de bord',personnel:'Personnel',certifications:'Certifications',
+alerts:'Alertes',reports:'Rapports',deployments:'Déploiements',settings:'Paramètres',
+logout:'Déconnexion',search:'Rechercher...',add:'Ajouter',edit:'Modifier',
+delete:'Supprimer',save:'Enregistrer',cancel:'Annuler',close:'Fermer',
+confirm_delete:'Confirmer la suppression ?',total:'Total',
+apte:'Apte',inapte_temp:'Inapte temp.',inapte_def:'Inapte déf.',
+en_mission:'En mission',en_conge:'En congé',en_formation:'En formation',mute:'Muté',
+readiness:'Disponibilité opérationnelle',readiness_rate:'Taux de disponibilité',
+by_unit:'Par unité',expiring_soon:'Expirent bientôt',expired:'Expirées',
+rank:'Grade',last_name:'Nom',first_name:'Prénom',unit:'Unité',function_:'Fonction',
+status:'Statut',medical_expiry:'Visite médicale',phone:'Téléphone',email:'Email',
+matricule:'Matricule',birth_date:'Date de naissance',blood_type:'Groupe sanguin',
+incorporation:'Date d\'incorporation',photo:'Photo URL',status_note:'Note statut',
+cert_type:'Type de certification',obtained:'Obtenue le',expires:'Expire le',
+validity:'Validité (mois)',mandatory:'Obligatoire',category:'Catégorie',
+name_fr:'Nom (FR)',name_nl:'Nom (NL)',notes:'Notes',
+mission_name:'Nom de mission',operation:'Opération',location:'Lieu',
+start_date:'Date début',end_date:'Date fin',planned:'Planifié',active:'Actif',
+completed:'Terminé',cancelled:'Annulé',
+all_statuses:'Tous les statuts',all_units:'Toutes les unités',all_categories:'Toutes',
+filter_status:'Filtrer par statut',filter_unit:'Filtrer par unité',
+no_data:'Aucune donnée',loading:'Chargement...',
+valid:'Valide',expiring:'Expire bientôt',
+combat:'Combat',medical:'Médical',physical:'Physique',driving:'Conduite',security:'Sécurité',other:'Autre',
+personnel_count:'Effectif',deployable:'Déployables',cert_overview:'Aperçu certifications',
+recent_deployments:'Déploiements récents',
+report_readiness:'Rapport de disponibilité',report_certs:'Rapport certifications',
+report_unit:'Rapport par unité',generate:'Générer',export_pdf:'Exporter PDF',export_csv:'Exporter CSV',
+units_mgmt:'Gestion des unités',cert_types_mgmt:'Types de certifications',profile:'Profil',
+demo_data:'Données de démonstration',seed_demo:'Générer les données démo',
+language:'Langue',theme:'Thème',abbreviation:'Abréviation',type:'Type',
+commander:'Commandant',parent_unit:'Unité parente',
+composante:'Composante',brigade:'Brigade',bataillon:'Bataillon',compagnie:'Compagnie',
+peloton:'Peloton',section:'Section',autre:'Autre',
+saved:'Enregistré avec succès',deleted:'Supprimé avec succès',error_occurred:'Une erreur est survenue',
+seed_success:'Données démo générées !',
+expired_certs:'Certifications expirées',expiring_30:'Expirent dans 30 jours',
+expiring_90:'Expirent dans 30-90 jours',medical_alerts:'Alertes médicales',
+renew:'Renouveler',days:'jours',overdue:'en retard',remaining:'restants',
+no_alerts:'Aucune alerte',select_report:'Sélectionnez un type de rapport',
+weekly_readiness:'Disponibilité hebdomadaire',
+new_personnel:'Nouveau personnel',edit_personnel:'Modifier personnel',
+new_cert:'Nouvelle certification',edit_cert:'Modifier certification',
+new_unit:'Nouvelle unité',edit_unit:'Modifier unité',
+new_cert_type:'Nouveau type',edit_cert_type:'Modifier type',
+new_deployment:'Nouveau déploiement',edit_deployment:'Modifier déploiement',
+detail:'Détail',certs_for:'Certifications de',history:'Historique',
+login:'Connexion',signup:'Créer un compte',create_account:'Créer un compte',
+have_account:'Déjà un compte ?',no_account:'Pas encore de compte ?',
+full_name:'Nom complet',password:'Mot de passe',
+missing:'Manquant',of:'sur',person:'personne',persons:'personnes'
+},nl:{
+dashboard:'Dashboard',personnel:'Personeel',certifications:'Certificeringen',
+alerts:'Waarschuwingen',reports:'Rapporten',deployments:'Inzetten',settings:'Instellingen',
+logout:'Uitloggen',search:'Zoeken...',add:'Toevoegen',edit:'Bewerken',
+delete:'Verwijderen',save:'Opslaan',cancel:'Annuleren',close:'Sluiten',
+confirm_delete:'Bevestig verwijdering?',total:'Totaal',
+apte:'Geschikt',inapte_temp:'Tijdelijk ongeschikt',inapte_def:'Definitief ongeschikt',
+en_mission:'Op missie',en_conge:'Met verlof',en_formation:'In opleiding',mute:'Overgeplaatst',
+readiness:'Operationele beschikbaarheid',readiness_rate:'Beschikbaarheidsgraad',
+by_unit:'Per eenheid',expiring_soon:'Verloopt binnenkort',expired:'Verlopen',
+rank:'Graad',last_name:'Naam',first_name:'Voornaam',unit:'Eenheid',function_:'Functie',
+status:'Status',medical_expiry:'Medisch keuring',phone:'Telefoon',email:'Email',
+matricule:'Stamnummer',birth_date:'Geboortedatum',blood_type:'Bloedgroep',
+incorporation:'Inlijvingsdatum',photo:'Foto URL',status_note:'Statusnota',
+cert_type:'Certificeringstype',obtained:'Behaald op',expires:'Vervalt op',
+validity:'Geldigheid (maanden)',mandatory:'Verplicht',category:'Categorie',
+name_fr:'Naam (FR)',name_nl:'Naam (NL)',notes:'Opmerkingen',
+mission_name:'Missienaam',operation:'Operatie',location:'Locatie',
+start_date:'Startdatum',end_date:'Einddatum',planned:'Gepland',active:'Actief',
+completed:'Voltooid',cancelled:'Geannuleerd',
+all_statuses:'Alle statussen',all_units:'Alle eenheden',all_categories:'Alle',
+filter_status:'Filter op status',filter_unit:'Filter op eenheid',
+no_data:'Geen gegevens',loading:'Laden...',
+valid:'Geldig',expiring:'Verloopt binnenkort',
+combat:'Gevecht',medical:'Medisch',physical:'Fysiek',driving:'Rijden',security:'Veiligheid',other:'Andere',
+personnel_count:'Personeelssterkte',deployable:'Inzetbaar',cert_overview:'Certificeringsoverzicht',
+recent_deployments:'Recente inzetten',
+report_readiness:'Beschikbaarheidsrapport',report_certs:'Certificeringsrapport',
+report_unit:'Rapport per eenheid',generate:'Genereren',export_pdf:'PDF exporteren',export_csv:'CSV exporteren',
+units_mgmt:'Eenheidsbeheer',cert_types_mgmt:'Certificeringstypes',profile:'Profiel',
+demo_data:'Demonstratiegegevens',seed_demo:'Demogegevens genereren',
+language:'Taal',theme:'Thema',abbreviation:'Afkorting',type:'Type',
+commander:'Commandant',parent_unit:'Bovenliggende eenheid',
+composante:'Component',brigade:'Brigade',bataillon:'Bataljon',compagnie:'Compagnie',
+peloton:'Peloton',section:'Sectie',autre:'Andere',
+saved:'Succesvol opgeslagen',deleted:'Succesvol verwijderd',error_occurred:'Er is een fout opgetreden',
+seed_success:'Demogegevens gegenereerd!',
+expired_certs:'Verlopen certificeringen',expiring_30:'Verlopen binnen 30 dagen',
+expiring_90:'Verlopen binnen 30-90 dagen',medical_alerts:'Medische waarschuwingen',
+renew:'Vernieuwen',days:'dagen',overdue:'achterstallig',remaining:'resterend',
+no_alerts:'Geen waarschuwingen',select_report:'Selecteer een rapporttype',
+weekly_readiness:'Wekelijkse beschikbaarheid',
+new_personnel:'Nieuw personeel',edit_personnel:'Personeel bewerken',
+new_cert:'Nieuwe certificering',edit_cert:'Certificering bewerken',
+new_unit:'Nieuwe eenheid',edit_unit:'Eenheid bewerken',
+new_cert_type:'Nieuw type',edit_cert_type:'Type bewerken',
+new_deployment:'Nieuwe inzet',edit_deployment:'Inzet bewerken',
+detail:'Detail',certs_for:'Certificeringen van',history:'Geschiedenis',
+login:'Inloggen',signup:'Account aanmaken',create_account:'Account aanmaken',
+have_account:'Al een account?',no_account:'Nog geen account?',
+full_name:'Volledige naam',password:'Wachtwoord',
+missing:'Ontbreekt',of:'van',person:'persoon',persons:'personen'
+}};
+function t(k){return T[currentLang]?.[k]||T.fr[k]||k}
+function rankLabel(id){const r=RANKS.find(x=>x.id===id);return r?r[currentLang]||r.fr:id||''}
+function catLabel(c){return t(c)||c}
+
+/* ===== UTILITIES ===== */
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+function showToast(msg,type='success'){const c=document.getElementById('toastContainer');const el=document.createElement('div');el.className='toast toast-'+type;el.textContent=msg;c.appendChild(el);setTimeout(()=>el.remove(),3500)}
+function formatDate(d){if(!d)return'—';const p=new Date(d);return p.toLocaleDateString(currentLang==='nl'?'nl-BE':'fr-BE')}
+function daysDiff(d){if(!d)return Infinity;return Math.ceil((new Date(d)-new Date())/(1000*60*60*24))}
+function paginateArray(arr,page,size){const total=Math.ceil(arr.length/size)||1;const items=arr.slice((page-1)*size,page*size);return{items,total,current:page}}
+function sortArray(arr,field,dir){return[...arr].sort((a,b)=>{let va=a[field]??'',vb=b[field]??'';if(typeof va==='string')va=va.toLowerCase();if(typeof vb==='string')vb=vb.toLowerCase();if(va<vb)return dir==='asc'?-1:1;if(va>vb)return dir==='asc'?1:-1;return 0})}
+function statusBadge(s){const map={apte:'green',inapte_temp:'red',inapte_def:'red',en_mission:'blue',en_conge:'amber',en_formation:'purple',mute:'gray'};return`<span class="badge badge-${map[s]||'gray'}">${esc(t(s))}</span>`}
+function certBadge(s){const map={valid:'green',expiring:'amber',expired:'red'};return`<span class="badge badge-${map[s]||'gray'}">${esc(t(s))}</span>`}
+function deployBadge(s){const map={planned:'blue',active:'green',completed:'gray',cancelled:'red'};return`<span class="badge badge-${map[s]||'gray'}">${esc(t(s))}</span>`}
+
+function openModal(html){document.getElementById('modalContent').innerHTML=html;document.getElementById('modalOverlay').classList.add('active')}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('active')}
+function closeDetail(){document.getElementById('detailPanel').classList.remove('open')}
+
+function renderPagination(containerId,totalPages,current,onPage){
+let h='<div class="pagination">';
+h+=`<button ${current<=1?'disabled':''} onclick="${onPage}(${current-1})">&laquo;</button>`;
+for(let i=1;i<=totalPages;i++){h+=`<button class="${i===current?'active':''}" onclick="${onPage}(${i})">${i}</button>`}
+h+=`<button ${current>=totalPages?'disabled':''} onclick="${onPage}(${current+1})">&raquo;</button></div>`;
+return h;
+}
+
+/* ===== AUTH ===== */
+function toggleAuthMode(){
+isSignupMode=!isSignupMode;
+document.getElementById('signupFields').style.display=isSignupMode?'block':'none';
+document.getElementById('authBtn').textContent=isSignupMode?t('create_account'):t('login');
+document.getElementById('authToggle').textContent=isSignupMode?t('have_account'):t('no_account');
+}
+async function handleAuth(){
+const email=document.getElementById('loginEmail').value.trim();
+const pass=document.getElementById('loginPassword').value;
+if(!email||!pass)return showToast('Email & password required','error');
+if(isSignupMode){
+const name=document.getElementById('signupName').value.trim();
+const{error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
+if(error)return showToast(error.message,'error');
+showToast('Compte créé ! Vérifiez votre email.','info');
+}else{
+const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
+if(error)return showToast(error.message,'error');
+currentUser=data.user;
+initApp();
+}
+}
+async function handleLogout(){await sb.auth.signOut();currentUser=null;document.getElementById('app').classList.remove('active');document.getElementById('loginPage').style.display='flex'}
+async function checkSession(){
+const{data:{session}}=await sb.auth.getSession();
+if(session){currentUser=session.user;initApp()}
+}
+
+/* ===== INIT ===== */
+function initApp(){
+document.getElementById('loginPage').style.display='none';
+document.getElementById('app').classList.add('active');
+buildNav();
+loadAppData();
+}
+
+/* ===== NAV ===== */
+const NAV_ICONS={
+dashboard:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+personnel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
+certifications:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>',
+alerts:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>',
+deployments:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>',
+reports:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>',
+settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>'
+};
+const NAV_PAGES=['dashboard','personnel','certifications','alerts','deployments','reports','settings'];
+function buildNav(){
+let h='';NAV_PAGES.forEach(p=>{h+=`<button class="nav-item${p===currentPage?' active':''}" onclick="navigateTo('${p}')">${NAV_ICONS[p]}<span>${t(p)}</span></button>`});
+document.getElementById('navItems').innerHTML=h;
+document.getElementById('sidebarFooter').innerHTML=`<div style="margin-bottom:.5rem">${esc(currentUser?.email||'')}</div><button class="nav-item" onclick="handleLogout()">${t('logout')}</button>`;
+document.getElementById('pageTitle').textContent=t(currentPage);
+document.getElementById('globalSearch').placeholder=t('search');
+document.getElementById('langBtn').textContent=currentLang==='fr'?'NL':'FR';
+}
+function navigateTo(p){
+currentPage=p;
+document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+document.getElementById('page-'+p)?.classList.add('active');
+document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+document.querySelectorAll('.nav-item')[NAV_PAGES.indexOf(p)]?.classList.add('active');
+document.getElementById('pageTitle').textContent=t(p);
+closeDetail();
+if(window.innerWidth<768)document.getElementById('sidebar').classList.remove('open');
+}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open')}
+function toggleTheme(){const html=document.documentElement;const isDark=html.dataset.theme==='dark';html.dataset.theme=isDark?'light':'dark';localStorage.setItem('bf_theme',html.dataset.theme);document.getElementById('themeBtn').innerHTML=isDark?'&#9790;':'&#9788;'}
+function toggleLang(){currentLang=currentLang==='fr'?'nl':'fr';localStorage.setItem('bf_lang',currentLang);buildNav();renderAll()}
+
+/* ===== DATA ===== */
+async function loadAppData(){
+try{
+const[u,p,ct,c,d]=await Promise.all([
+sb.from('units').select('*').order('name'),
+sb.from('personnel').select('*, unit:units(name,abbreviation)').order('last_name'),
+sb.from('cert_types').select('*').order('name_fr'),
+sb.from('certifications').select('*, personnel:personnel(last_name,first_name,rank,unit_id), cert_type:cert_types(name_fr,name_nl,category,validity_months)').order('expiry_date'),
+sb.from('deployments').select('*, personnel:personnel(last_name,first_name,rank)').order('start_date',{ascending:false})
+]);
+appUnits=u.data||[];appPersonnel=p.data||[];appCertTypes=ct.data||[];appCerts=c.data||[];appDeployments=d.data||[];
+updateCertStatuses();
+renderAll();
+}catch(e){showToast(t('error_occurred'),'error');console.error(e)}
+}
+function updateCertStatuses(){
+const today=new Date();
+appCerts.forEach(c=>{
+const exp=new Date(c.expiry_date);
+const diff=daysDiff(c.expiry_date);
+if(diff<0)c.status='expired';
+else if(diff<=30)c.status='expiring';
+else c.status='valid';
+});
+}
+function renderAll(){renderDashboard();renderPersonnel();renderCertMatrix();renderAlerts();renderDeployments();renderReports();renderSettings()}
+
+/* ===== DASHBOARD ===== */
+function renderDashboard(){
+const total=appPersonnel.length;
+const apte=appPersonnel.filter(p=>p.status==='apte').length;
+const mission=appPersonnel.filter(p=>p.status==='en_mission').length;
+const formation=appPersonnel.filter(p=>p.status==='en_formation').length;
+const conge=appPersonnel.filter(p=>p.status==='en_conge').length;
+const inapte=appPersonnel.filter(p=>p.status==='inapte_temp'||p.status==='inapte_def').length;
+const rate=total?Math.round(apte/total*100):0;
+const expiring=appCerts.filter(c=>c.status==='expiring').length;
+const expired=appCerts.filter(c=>c.status==='expired').length;
+const circ=2*Math.PI*72;
+const offset=circ-(rate/100)*circ;
+const gaugeColor=rate>=80?'var(--green-500)':rate>=60?'var(--amber-500)':'var(--red-500)';
+
+let h=`<div class="stat-grid">
+<div class="stat-card"><div class="stat-icon" style="background:var(--navy-700)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div><div class="stat-val">${total}</div><div class="stat-label">${t('total')}</div></div></div>
+<div class="stat-card"><div class="stat-icon" style="background:var(--green-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></div><div><div class="stat-val">${apte}</div><div class="stat-label">${t('apte')}</div></div></div>
+<div class="stat-card"><div class="stat-icon" style="background:var(--blue-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg></div><div><div class="stat-val">${mission}</div><div class="stat-label">${t('en_mission')}</div></div></div>
+<div class="stat-card"><div class="stat-icon" style="background:var(--purple-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg></div><div><div class="stat-val">${formation}</div><div class="stat-label">${t('en_formation')}</div></div></div>
+<div class="stat-card"><div class="stat-icon" style="background:var(--amber-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div><div><div class="stat-val">${conge}</div><div class="stat-label">${t('en_conge')}</div></div></div>
+<div class="stat-card"><div class="stat-icon" style="background:var(--red-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg></div><div><div class="stat-val">${inapte}</div><div class="stat-label">${t('inapte_temp')}</div></div></div>
+</div>`;
+
+h+=`<div style="display:grid;grid-template-columns:280px 1fr;gap:1.5rem;margin-bottom:1.5rem">
+<div class="card" style="display:flex;flex-direction:column;align-items:center;padding:1.5rem">
+<svg class="gauge-svg" viewBox="0 0 160 160"><circle class="gauge-bg" cx="80" cy="80" r="72"/><circle class="gauge-fill" cx="80" cy="80" r="72" stroke="${gaugeColor}" stroke-dasharray="${circ}" stroke-dashoffset="${offset}"/><text class="gauge-text" x="80" y="80" transform="rotate(90 80 80)">${rate}%</text></svg>
+<div class="gauge-label">${t('readiness_rate')}</div>
+</div>
+<div class="card"><h3 style="margin-bottom:1rem;font-size:.95rem">${t('by_unit')}</h3>`;
+appUnits.forEach(u=>{
+const uPers=appPersonnel.filter(p=>p.unit_id===u.id);
+const uApte=uPers.filter(p=>p.status==='apte').length;
+const pct=uPers.length?Math.round(uApte/uPers.length*100):0;
+const color=pct>=80?'var(--green-500)':pct>=60?'var(--amber-500)':'var(--red-500)';
+h+=`<div class="bar-row"><span class="bar-label">${esc(u.abbreviation||u.name)}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}">${pct}%</div></div><span style="width:60px;font-size:.78rem;color:var(--text-sec)">${uApte}/${uPers.length}</span></div>`;
+});
+if(!appUnits.length)h+=`<p style="color:var(--text-sec);font-size:.85rem">${t('no_data')}</p>`;
+h+=`</div></div>`;
+
+h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+<div class="card"><h3 style="margin-bottom:.75rem;font-size:.95rem">${t('cert_overview')}</h3>
+<div style="display:flex;gap:1.5rem;font-size:.9rem">
+<div><span style="color:var(--green-500);font-weight:700">${appCerts.filter(c=>c.status==='valid').length}</span> ${t('valid')}</div>
+<div><span style="color:var(--amber-500);font-weight:700">${expiring}</span> ${t('expiring')}</div>
+<div><span style="color:var(--red-500);font-weight:700">${expired}</span> ${t('expired')}</div>
+</div></div>
+<div class="card"><h3 style="margin-bottom:.75rem;font-size:.95rem">${t('recent_deployments')}</h3>`;
+const recentDep=appDeployments.slice(0,3);
+if(recentDep.length){recentDep.forEach(d=>{h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;font-size:.83rem;border-bottom:1px solid var(--border)"><span>${esc(d.mission_name)}</span>${deployBadge(d.status)}</div>`})}
+else{h+=`<p style="color:var(--text-sec);font-size:.85rem">${t('no_data')}</p>`}
+h+=`</div></div>`;
+document.getElementById('page-dashboard').innerHTML=h;
+}
+
+/* ===== PERSONNEL ===== */
+function renderPersonnel(){
+let filtered=[...appPersonnel];
+if(persFilter.search){const s=persFilter.search.toLowerCase();filtered=filtered.filter(p=>(p.last_name+' '+p.first_name+' '+rankLabel(p.rank)+' '+(p.matricule||'')).toLowerCase().includes(s))}
+if(persFilter.status)filtered=filtered.filter(p=>p.status===persFilter.status);
+if(persFilter.unit)filtered=filtered.filter(p=>p.unit_id===persFilter.unit);
+filtered=sortArray(filtered,persSort.field,persSort.dir);
+const{items,total,current}=paginateArray(filtered,persPage,PAGE_SIZE);
+const statuses=['apte','inapte_temp','inapte_def','en_mission','en_conge','en_formation','mute'];
+const sortIcon=(f)=>persSort.field===f?(persSort.dir==='asc'?' &#9650;':' &#9660;'):'';
+
+let h=`<div class="toolbar">
+<input type="search" value="${esc(persFilter.search)}" placeholder="${t('search')}" oninput="persFilter.search=this.value;persPage=1;renderPersonnel()">
+<select onchange="persFilter.status=this.value;persPage=1;renderPersonnel()"><option value="">${t('all_statuses')}</option>${statuses.map(s=>`<option value="${s}" ${persFilter.status===s?'selected':''}>${t(s)}</option>`).join('')}</select>
+<select onchange="persFilter.unit=this.value;persPage=1;renderPersonnel()"><option value="">${t('all_units')}</option>${appUnits.map(u=>`<option value="${u.id}" ${persFilter.unit===u.id?'selected':''}>${esc(u.name)}</option>`).join('')}</select>
+<span style="flex:1"></span>
+<span style="font-size:.82rem;color:var(--text-sec)">${filtered.length} ${filtered.length>1?t('persons'):t('person')}</span>
+<button class="btn btn-primary btn-sm" onclick="openPersonnelModal()">+ ${t('add')}</button>
+</div>`;
+h+=`<div class="card" style="padding:0;overflow-x:auto"><table>
+<thead><tr>
+<th onclick="togglePersSort('rank')">${t('rank')}${sortIcon('rank')}</th>
+<th onclick="togglePersSort('last_name')">${t('last_name')}${sortIcon('last_name')}</th>
+<th onclick="togglePersSort('first_name')">${t('first_name')}${sortIcon('first_name')}</th>
+<th>${t('unit')}</th><th>${t('function_')}</th>
+<th onclick="togglePersSort('status')">${t('status')}${sortIcon('status')}</th>
+<th></th></tr></thead><tbody>`;
+if(items.length){items.forEach(p=>{
+const uName=p.unit?esc(p.unit.abbreviation||p.unit.name):'—';
+h+=`<tr style="cursor:pointer" onclick="openPersonnelDetail('${p.id}')">
+<td>${esc(rankLabel(p.rank))}</td><td><strong>${esc(p.last_name)}</strong></td><td>${esc(p.first_name)}</td>
+<td>${uName}</td><td>${esc(p.function||'—')}</td><td>${statusBadge(p.status)}</td>
+<td><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openPersonnelModal('${p.id}')">${t('edit')}</button></td></tr>`})}
+else{h+=`<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-sec)">${t('no_data')}</td></tr>`}
+h+=`</tbody></table></div>`;
+h+=renderPagination('','',total,current,'goToPersPage').replace('<div','<div id="persPag"');
+document.getElementById('page-personnel').innerHTML=h;
+}
+function togglePersSort(f){if(persSort.field===f)persSort.dir=persSort.dir==='asc'?'desc':'asc';else{persSort.field=f;persSort.dir='asc'}renderPersonnel()}
+function goToPersPage(p){persPage=p;renderPersonnel()}
+
+function openPersonnelModal(id){
+const p=id?appPersonnel.find(x=>x.id===id):null;
+const title=p?t('edit_personnel'):t('new_personnel');
+const statuses=['apte','inapte_temp','inapte_def','en_mission','en_conge','en_formation','mute'];
+let h=`<div class="modal-header"><h3>${title}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+<div class="modal-body">
+<div class="form-row">
+<div class="form-group"><label>${t('rank')}</label><select id="mRank">${RANKS.map(r=>`<option value="${r.id}" ${p?.rank===r.id?'selected':''}>${rankLabel(r.id)}</option>`).join('')}</select></div>
+<div class="form-group"><label>${t('matricule')}</label><input id="mMatricule" value="${esc(p?.matricule||'')}"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>${t('last_name')} *</label><input id="mLast" value="${esc(p?.last_name||'')}" required></div>
+<div class="form-group"><label>${t('first_name')} *</label><input id="mFirst" value="${esc(p?.first_name||'')}" required></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>${t('unit')}</label><select id="mUnit"><option value="">—</option>${appUnits.map(u=>`<option value="${u.id}" ${p?.unit_id===u.id?'selected':''}>${esc(u.name)}</option>`).join('')}</select></div>
+<div class="form-group"><label>${t('function_')}</label><input id="mFunc" value="${esc(p?.function||'')}"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>${t('status')}</label><select id="mStatus">${statuses.map(s=>`<option value="${s}" ${p?.status===s?'selected':''}>${t(s)}</option>`).join('')}</select></div>
+<div class="form-group"><label>${t('medical_expiry')}</label><input type="date" id="mMedical" value="${p?.medical_expiry||''}"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>${t('phone')}</label><input id="mPhone" value="${esc(p?.phone||'')}"></div>
+<div class="form-group"><label>${t('email')}</label><input type="email" id="mEmail" value="${esc(p?.email||'')}"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>${t('birth_date')}</label><input type="date" id="mBirth" value="${p?.birth_date||''}"></div>
+<div class="form-group"><label>${t('blood_type')}</label><select id="mBlood"><option value="">—</option>${['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(b=>`<option value="${b}" ${p?.blood_type===b?'selected':''}>${b}</option>`).join('')}</select></div>
+</div>
+<div class="form-group"><label>${t('status_note')}</label><input id="mNote" value="${esc(p?.status_note||'')}"></div>
+</div>
+<div class="modal-footer">
+${p?`<button class="btn btn-danger btn-sm" onclick="deletePersonnel('${p.id}')">${t('delete')}</button>`:''}
+<button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
+<button class="btn btn-primary" onclick="savePersonnel('${id||''}')">${t('save')}</button>
+</div>`;
+openModal(h);
+}
+
+async function savePersonnel(id){
+const data={
+rank:document.getElementById('mRank').value,
+last_name:document.getElementById('mLast').value.trim(),
+first_name:document.getElementById('mFirst').value.trim(),
+unit_id:document.getElementById('mUnit').value||null,
+function:document.getElementById('mFunc').value.trim()||null,
+status:document.getElementById('mStatus').value,
+medical_expiry:document.getElementById('mMedical').value||null,
+phone:document.getElementById('mPhone').value.trim()||null,
+email:document.getElementById('mEmail').value.trim()||null,
+matricule:document.getElementById('mMatricule').value.trim()||null,
+birth_date:document.getElementById('mBirth').value||null,
+blood_type:document.getElementById('mBlood').value||null,
+status_note:document.getElementById('mNote').value.trim()||null,
+owner_id:currentUser.id
+};
+if(!data.last_name||!data.first_name)return showToast('Nom et prénom requis','error');
+let err;
+if(id){({error:err}=await sb.from('personnel').update(data).eq('id',id))}
+else{({error:err}=await sb.from('personnel').insert(data))}
+if(err)return showToast(err.message,'error');
+showToast(t('saved'));closeModal();loadAppData();
+}
+
+async function deletePersonnel(id){
+if(!confirm(t('confirm_delete')))return;
+const{error}=await sb.from('personnel').delete().eq('id',id);
+if(error)return showToast(error.message,'error');
+showToast(t('deleted'));closeModal();closeDetail();loadAppData();
+}
+
+function openPersonnelDetail(id){
+const p=appPersonnel.find(x=>x.id===id);if(!p)return;
+const certs=appCerts.filter(c=>c.personnel_id===id);
+const deps=appDeployments.filter(d=>d.personnel_id===id);
+const uName=p.unit?esc(p.unit.abbreviation||p.unit.name):'—';
+let h=`<div class="detail-header"><h3>${t('detail')}</h3><button class="modal-close" onclick="closeDetail()">&times;</button></div>
+<div class="detail-body">
+<div style="text-align:center;margin-bottom:1.25rem">
+<div style="width:64px;height:64px;border-radius:50%;background:var(--navy-700);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700">${esc((p.first_name[0]||'')+(p.last_name[0]||''))}</div>
+<h3 style="margin-top:.5rem">${esc(rankLabel(p.rank))} ${esc(p.first_name)} ${esc(p.last_name)}</h3>
+<div>${statusBadge(p.status)}</div>
+</div>
+<div class="detail-section"><h4>Info</h4>
+<div class="detail-row"><span>${t('unit')}</span><span>${uName}</span></div>
+<div class="detail-row"><span>${t('function_')}</span><span>${esc(p.function||'—')}</span></div>
+<div class="detail-row"><span>${t('matricule')}</span><span>${esc(p.matricule||'—')}</span></div>
+<div class="detail-row"><span>${t('medical_expiry')}</span><span>${formatDate(p.medical_expiry)}</span></div>
+<div class="detail-row"><span>${t('phone')}</span><span>${esc(p.phone||'—')}</span></div>
+<div class="detail-row"><span>${t('email')}</span><span>${esc(p.email||'—')}</span></div>
+<div class="detail-row"><span>${t('blood_type')}</span><span>${esc(p.blood_type||'—')}</span></div>
+<div class="detail-row"><span>${t('birth_date')}</span><span>${formatDate(p.birth_date)}</span></div>
+<div class="detail-row"><span>${t('incorporation')}</span><span>${formatDate(p.incorporation_date)}</span></div>
+</div>
+<div class="detail-section"><h4>${t('certs_for')} ${esc(p.first_name)} <button class="btn btn-sm btn-outline" style="margin-left:.5rem" onclick="openCertModal('${p.id}')"">+ ${t('add')}</button></h4>`;
+if(certs.length){h+='<table><thead><tr><th>'+t('cert_type')+'</th><th>'+t('expires')+'</th><th>'+t('status')+'</th></tr></thead><tbody>';
+certs.forEach(c=>{const name=currentLang==='nl'?c.cert_type?.name_nl:c.cert_type?.name_fr;h+=`<tr><td>${esc(name||'—')}</td><td>${formatDate(c.expiry_date)}</td><td>${certBadge(c.status)}</td></tr>`});
+h+='</tbody></table>'}else{h+=`<p style="color:var(--text-sec);font-size:.83rem">${t('no_data')}</p>`}
+h+=`</div>
+<div class="detail-section"><h4>${t('deployments')}</h4>`;
+if(deps.length){deps.forEach(d=>{h+=`<div style="display:flex;justify-content:space-between;padding:.35rem 0;font-size:.83rem;border-bottom:1px solid var(--border)"><span>${esc(d.mission_name)}</span><span>${formatDate(d.start_date)}</span>${deployBadge(d.status)}</div>`})}
+else{h+=`<p style="color:var(--text-sec);font-size:.83rem">${t('no_data')}</p>`}
+h+=`</div>
+<div style="display:flex;gap:.5rem;margin-top:1rem">
+<button class="btn btn-primary btn-sm" onclick="openPersonnelModal('${p.id}')">${t('edit')}</button>
+<button class="btn btn-danger btn-sm" onclick="deletePersonnel('${p.id}')">${t('delete')}</button>
+</div></div>`;
+const panel=document.getElementById('detailPanel');panel.innerHTML=h;panel.classList.add('open');
+}
+
+/* ===== CERTIFICATIONS MATRIX ===== */
+function renderCertMatrix(){
+const mandatoryCerts=appCertTypes.filter(ct=>ct.mandatory);
+const allCerts=appCertTypes;
+const cats=[...new Set(appCertTypes.map(c=>c.category))];
+let filterUnit=document.getElementById('matFilterUnit')?.value||'';
+let filterCat=document.getElementById('matFilterCat')?.value||'';
+let pers=[...appPersonnel];
+if(filterUnit)pers=pers.filter(p=>p.unit_id===filterUnit);
+const displayCerts=filterCat?allCerts.filter(c=>c.category===filterCat):mandatoryCerts.length?mandatoryCerts:allCerts;
+
+let h=`<div class="toolbar">
+<select id="matFilterUnit" onchange="renderCertMatrix()"><option value="">${t('all_units')}</option>${appUnits.map(u=>`<option value="${u.id}" ${filterUnit===u.id?'selected':''}>${esc(u.name)}</option>`).join('')}</select>
+<select id="matFilterCat" onchange="renderCertMatrix()"><option value="">${t('all_categories')}</option>${cats.map(c=>`<option value="${c}" ${filterCat===c?'selected':''}>${catLabel(c)}</option>`).join('')}</select>
+</div>`;
+h+=`<div class="card matrix-wrap"><table><thead><tr><th>${t('personnel')}</th>`;
+displayCerts.forEach(ct=>{const name=currentLang==='nl'?ct.name_nl:ct.name_fr;h+=`<th title="${esc(name)}">${esc(name.length>12?name.slice(0,12)+'…':name)}</th>`});
+h+=`</tr></thead><tbody>`;
+if(pers.length){pers.forEach(p=>{
+h+=`<tr><td style="cursor:pointer" onclick="openPersonnelDetail('${p.id}')">${esc(rankLabel(p.rank))} ${esc(p.last_name)}</td>`;
+displayCerts.forEach(ct=>{
+const cert=appCerts.find(c=>c.personnel_id===p.id&&c.cert_type_id===ct.id);
+const cls=cert?cert.status:'missing';
+h+=`<td><span class="matrix-cell ${cls}" title="${cert?formatDate(cert.expiry_date):t('missing')}" style="cursor:pointer" onclick="openCertModal('${p.id}','${cert?.id||''}','${ct.id}')"></span></td>`;
+});
+h+=`</tr>`})}
+else{h+=`<tr><td colspan="${displayCerts.length+1}" style="text-align:center;padding:2rem;color:var(--text-sec)">${t('no_data')}</td></tr>`}
+h+=`</tbody></table></div>`;
+document.getElementById('page-certifications').innerHTML=h;
+}
+
+/* ===== CERT CRUD ===== */
+function openCertModal(personnelId,certId,certTypeId){
+const c=certId?appCerts.find(x=>x.id===certId):null;
+const title=c?t('edit_cert'):t('new_cert');
+let h=`<div class="modal-header"><h3>${title}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+<div class="modal-body">
+<input type="hidden" id="cPersId" value="${personnelId}">
+<div class="form-group"><label>${t('cert_type')}</label><select id="cType">${appCertTypes.map(ct=>{const name=currentLang==='nl'?ct.name_nl:ct.name_fr;return`<option value="${ct.id}" data-months="${ct.validity_months}" ${(c?.cert_type_id===ct.id||certTypeId===ct.id)?'selected':''}>${esc(name)}</option>`}).join('')}</select></div>
+<div class="form-row">
+<div class="form-group"><label>${t('obtained')}</label><input type="date" id="cObtained" value="${c?.obtained_date||new Date().toISOString().slice(0,10)}" onchange="updateCertExpiry()"></div>
+<div class="form-group"><label>${t('expires')}</label><input type="date" id="cExpiry" value="${c?.expiry_date||''}"></div>
+</div>
+<div class="form-group"><label>${t('notes')}</label><textarea id="cNotes" rows="2">${esc(c?.notes||'')}</textarea></div>
+</div>
+<div class="modal-footer">
+${c?`<button class="btn btn-danger btn-sm" onclick="deleteCert('${c.id}')">${t('delete')}</button>`:''}
+<button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
+<button class="btn btn-primary" onclick="saveCert('${certId||''}')">${t('save')}</button>
+</div>`;
+openModal(h);
+updateCertExpiry();
+}
+function updateCertExpiry(){
+const sel=document.getElementById('cType');if(!sel)return;
+const months=parseInt(sel.selectedOptions[0]?.dataset.months||12);
+const obt=document.getElementById('cObtained').value;
+if(obt){const d=new Date(obt);d.setMonth(d.getMonth()+months);document.getElementById('cExpiry').value=d.toISOString().slice(0,10)}
+}
+async function saveCert(id){
+const data={
+personnel_id:document.getElementById('cPersId').value,
+cert_type_id:document.getElementById('cType').value,
+obtained_date:document.getElementById('cObtained').value,
+expiry_date:document.getElementById('cExpiry').value,
+notes:document.getElementById('cNotes').value.trim()||null,
+owner_id:currentUser.id
+};
+if(!data.obtained_date||!data.expiry_date)return showToast('Dates requises','error');
+const diff=daysDiff(data.expiry_date);
+data.status=diff<0?'expired':diff<=30?'expiring':'valid';
+let err;
+if(id){({error:err}=await sb.from('certifications').update(data).eq('id',id))}
+else{({error:err}=await sb.from('certifications').insert(data))}
+if(err)return showToast(err.message,'error');
+showToast(t('saved'));closeModal();loadAppData();
+}
+async function deleteCert(id){
+if(!confirm(t('confirm_delete')))return;
+const{error}=await sb.from('certifications').delete().eq('id',id);
+if(error)return showToast(error.message,'error');
+showToast(t('deleted'));closeModal();loadAppData();
+}
+
+/* ===== ALERTS ===== */
+function renderAlerts(){
+const expired=appCerts.filter(c=>c.status==='expired');
+const exp30=appCerts.filter(c=>c.status==='expiring');
+const exp90=appCerts.filter(c=>{const d=daysDiff(c.expiry_date);return d>30&&d<=90});
+const medAlerts=appPersonnel.filter(p=>{const d=daysDiff(p.medical_expiry);return d<=60&&d>-Infinity&&d!==Infinity});
+
+function alertCards(certs,colorClass){
+if(!certs.length)return`<p style="color:var(--text-sec);font-size:.83rem">${t('no_alerts')}</p>`;
+let h='<div class="alert-list">';
+certs.forEach(c=>{
+const pName=c.personnel?`${rankLabel(c.personnel.rank)} ${c.personnel.first_name} ${c.personnel.last_name}`:'—';
+const cName=currentLang==='nl'?c.cert_type?.name_nl:c.cert_type?.name_fr;
+const diff=daysDiff(c.expiry_date);
+const detail=diff<0?`${Math.abs(diff)} ${t('days')} ${t('overdue')}`:`${diff} ${t('days')} ${t('remaining')}`;
+h+=`<div class="alert-card"><div class="alert-info"><span class="alert-name">${esc(pName)}</span><span class="alert-detail">${esc(cName||'')} — ${esc(detail)} — ${formatDate(c.expiry_date)}</span></div>
+<button class="btn btn-sm btn-outline" onclick="openCertModal('${c.personnel_id}','${c.id}','${c.cert_type_id}')">${t('renew')}</button></div>`;
+});
+return h+'</div>';
+}
+
+let h=`<div class="alert-section"><h3><span class="badge badge-red">${expired.length}</span> ${t('expired_certs')}</h3>${alertCards(expired,'red')}</div>`;
+h+=`<div class="alert-section"><h3><span class="badge badge-amber">${exp30.length}</span> ${t('expiring_30')}</h3>${alertCards(exp30,'amber')}</div>`;
+h+=`<div class="alert-section"><h3><span class="badge badge-blue">${exp90.length}</span> ${t('expiring_90')}</h3>${alertCards(exp90,'blue')}</div>`;
+h+=`<div class="alert-section"><h3><span class="badge badge-purple">${medAlerts.length}</span> ${t('medical_alerts')}</h3>`;
+if(medAlerts.length){h+='<div class="alert-list">';medAlerts.forEach(p=>{
+const diff=daysDiff(p.medical_expiry);const detail=diff<0?`${Math.abs(diff)} ${t('days')} ${t('overdue')}`:`${diff} ${t('days')} ${t('remaining')}`;
+h+=`<div class="alert-card"><div class="alert-info"><span class="alert-name">${esc(rankLabel(p.rank))} ${esc(p.first_name)} ${esc(p.last_name)}</span><span class="alert-detail">${t('medical_expiry')} — ${esc(detail)}</span></div>
+<button class="btn btn-sm btn-outline" onclick="openPersonnelModal('${p.id}')">${t('edit')}</button></div>`});h+='</div>'}
+else{h+=`<p style="color:var(--text-sec);font-size:.83rem">${t('no_alerts')}</p>`}
+h+=`</div>`;
+document.getElementById('page-alerts').innerHTML=h;
+}
+
+/* ===== DEPLOYMENTS ===== */
+function renderDeployments(){
+const statuses=['planned','active','completed','cancelled'];
+let h=`<div class="toolbar"><span style="flex:1"></span><button class="btn btn-primary btn-sm" onclick="openDeploymentModal()">+ ${t('add')}</button></div>`;
+h+=`<div class="card" style="padding:0;overflow-x:auto"><table><thead><tr>
+<th>${t('mission_name')}</th><th>${t('personnel')}</th><th>${t('location')}</th>
+<th>${t('start_date')}</th><th>${t('end_date')}</th><th>${t('status')}</th><th></th>
+</tr></thead><tbody>`;
+if(appDeployments.length){appDeployments.forEach(d=>{
+const pName=d.personnel?`${rankLabel(d.personnel.rank)} ${d.personnel.last_name}`:'—';
+h+=`<tr><td><strong>${esc(d.mission_name)}</strong>${d.operation?`<br><span style="font-size:.78rem;color:var(--text-sec)">${esc(d.operation)}</span>`:''}</td>
+<td>${esc(pName)}</td><td>${esc(d.location||'—')}</td><td>${formatDate(d.start_date)}</td><td>${formatDate(d.end_date)}</td>
+<td>${deployBadge(d.status)}</td><td><button class="btn btn-outline btn-sm" onclick="openDeploymentModal('${d.id}')">${t('edit')}</button></td></tr>`})}
+else{h+=`<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-sec)">${t('no_data')}</td></tr>`}
+h+=`</tbody></table></div>`;
+document.getElementById('page-deployments').innerHTML=h;
+}
+
+function openDeploymentModal(id){
+const d=id?appDeployments.find(x=>x.id===id):null;
+const title=d?t('edit_deployment'):t('new_deployment');
+const statuses=['planned','active','completed','cancelled'];
+let h=`<div class="modal-header"><h3>${title}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+<div class="modal-body">
+<div class="form-group"><label>${t('mission_name')} *</label><input id="dMission" value="${esc(d?.mission_name||'')}"></div>
+<div class="form-row">
+<div class="form-group"><label>${t('operation')}</label><input id="dOp" value="${esc(d?.operation||'')}"></div>
+<div class="form-group"><label>${t('location')}</label><input id="dLoc" value="${esc(d?.location||'')}"></div>
+</div>
+<div class="form-group"><label>${t('personnel')}</label><select id="dPers">${appPersonnel.map(p=>`<option value="${p.id}" ${d?.personnel_id===p.id?'selected':''}>${rankLabel(p.rank)} ${esc(p.last_name)} ${esc(p.first_name)}</option>`).join('')}</select></div>
+<div class="form-row">
+<div class="form-group"><label>${t('start_date')}</label><input type="date" id="dStart" value="${d?.start_date||''}"></div>
+<div class="form-group"><label>${t('end_date')}</label><input type="date" id="dEnd" value="${d?.end_date||''}"></div>
+</div>
+<div class="form-group"><label>${t('status')}</label><select id="dStatus">${statuses.map(s=>`<option value="${s}" ${d?.status===s?'selected':''}>${t(s)}</option>`).join('')}</select></div>
+<div class="form-group"><label>${t('notes')}</label><textarea id="dNotes" rows="2">${esc(d?.notes||'')}</textarea></div>
+</div>
+<div class="modal-footer">
+${d?`<button class="btn btn-danger btn-sm" onclick="deleteDeployment('${d.id}')">${t('delete')}</button>`:''}
+<button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
+<button class="btn btn-primary" onclick="saveDeployment('${id||''}')">${t('save')}</button>
+</div>`;
+openModal(h);
+}
+async function saveDeployment(id){
+const data={
+mission_name:document.getElementById('dMission').value.trim(),
+operation:document.getElementById('dOp').value.trim()||null,
+location:document.getElementById('dLoc').value.trim()||null,
+personnel_id:document.getElementById('dPers').value,
+start_date:document.getElementById('dStart').value||null,
+end_date:document.getElementById('dEnd').value||null,
+status:document.getElementById('dStatus').value,
+notes:document.getElementById('dNotes').value.trim()||null,
+owner_id:currentUser.id
+};
+if(!data.mission_name)return showToast('Mission name required','error');
+let err;
+if(id){({error:err}=await sb.from('deployments').update(data).eq('id',id))}
+else{({error:err}=await sb.from('deployments').insert(data))}
+if(err)return showToast(err.message,'error');
+showToast(t('saved'));closeModal();loadAppData();
+}
+async function deleteDeployment(id){
+if(!confirm(t('confirm_delete')))return;
+const{error}=await sb.from('deployments').delete().eq('id',id);
+if(error)return showToast(error.message,'error');
+showToast(t('deleted'));closeModal();loadAppData();
+}
+
+/* ===== REPORTS ===== */
+function renderReports(){
+let h=`<div class="toolbar">
+<select id="reportType"><option value="readiness">${t('report_readiness')}</option><option value="certs">${t('report_certs')}</option><option value="unit">${t('report_unit')}</option></select>
+<button class="btn btn-primary btn-sm" onclick="generateReport()">${t('generate')}</button>
+<button class="btn btn-outline btn-sm" onclick="exportPDF()">${t('export_pdf')}</button>
+<button class="btn btn-outline btn-sm" onclick="exportCSV()">${t('export_csv')}</button>
+</div><div class="card" id="reportOutput"><p style="color:var(--text-sec);text-align:center;padding:2rem">${t('select_report')}</p></div>`;
+document.getElementById('page-reports').innerHTML=h;
+}
+function generateReport(){
+const type=document.getElementById('reportType').value;
+const out=document.getElementById('reportOutput');
+if(type==='readiness')out.innerHTML=genReadinessReport();
+else if(type==='certs')out.innerHTML=genCertReport();
+else out.innerHTML=genUnitReport();
+}
+function genReadinessReport(){
+const today=formatDate(new Date().toISOString());
+let h=`<h3 style="margin-bottom:1rem">${t('weekly_readiness')} — ${today}</h3>`;
+h+=`<table><thead><tr><th>${t('unit')}</th><th>${t('total')}</th><th>${t('apte')}</th><th>${t('en_mission')}</th><th>${t('en_formation')}</th><th>${t('en_conge')}</th><th>${t('inapte_temp')}</th><th>%</th></tr></thead><tbody>`;
+appUnits.forEach(u=>{
+const up=appPersonnel.filter(p=>p.unit_id===u.id);
+const a=up.filter(p=>p.status==='apte').length;
+const pct=up.length?Math.round(a/up.length*100):0;
+h+=`<tr><td>${esc(u.name)}</td><td>${up.length}</td><td>${a}</td><td>${up.filter(p=>p.status==='en_mission').length}</td><td>${up.filter(p=>p.status==='en_formation').length}</td><td>${up.filter(p=>p.status==='en_conge').length}</td><td>${up.filter(p=>p.status==='inapte_temp'||p.status==='inapte_def').length}</td><td><strong>${pct}%</strong></td></tr>`});
+const totA=appPersonnel.filter(p=>p.status==='apte').length;const totPct=appPersonnel.length?Math.round(totA/appPersonnel.length*100):0;
+h+=`<tr style="font-weight:700;border-top:2px solid var(--border)"><td>TOTAL</td><td>${appPersonnel.length}</td><td>${totA}</td><td>${appPersonnel.filter(p=>p.status==='en_mission').length}</td><td>${appPersonnel.filter(p=>p.status==='en_formation').length}</td><td>${appPersonnel.filter(p=>p.status==='en_conge').length}</td><td>${appPersonnel.filter(p=>p.status==='inapte_temp'||p.status==='inapte_def').length}</td><td>${totPct}%</td></tr>`;
+h+=`</tbody></table>`;return h;
+}
+function genCertReport(){
+let h=`<h3 style="margin-bottom:1rem">${t('report_certs')}</h3>`;
+h+=`<table><thead><tr><th>${t('cert_type')}</th><th>${t('valid')}</th><th>${t('expiring')}</th><th>${t('expired')}</th><th>${t('missing')}</th></tr></thead><tbody>`;
+appCertTypes.forEach(ct=>{
+const name=currentLang==='nl'?ct.name_nl:ct.name_fr;
+const certs=appCerts.filter(c=>c.cert_type_id===ct.id);
+const v=certs.filter(c=>c.status==='valid').length;
+const e=certs.filter(c=>c.status==='expiring').length;
+const x=certs.filter(c=>c.status==='expired').length;
+const m=appPersonnel.length-certs.length;
+h+=`<tr><td>${esc(name)}</td><td><span class="badge badge-green">${v}</span></td><td><span class="badge badge-amber">${e}</span></td><td><span class="badge badge-red">${x}</span></td><td><span class="badge badge-gray">${m>0?m:0}</span></td></tr>`});
+h+=`</tbody></table>`;return h;
+}
+function genUnitReport(){
+let h=`<h3 style="margin-bottom:1rem">${t('report_unit')}</h3>`;
+appUnits.forEach(u=>{
+const up=appPersonnel.filter(p=>p.unit_id===u.id);
+h+=`<h4 style="margin:1rem 0 .5rem">${esc(u.name)} (${up.length})</h4><table><thead><tr><th>${t('rank')}</th><th>${t('last_name')}</th><th>${t('first_name')}</th><th>${t('status')}</th></tr></thead><tbody>`;
+up.forEach(p=>{h+=`<tr><td>${esc(rankLabel(p.rank))}</td><td>${esc(p.last_name)}</td><td>${esc(p.first_name)}</td><td>${statusBadge(p.status)}</td></tr>`});
+h+=`</tbody></table>`});
+return h;
+}
+function exportPDF(){const w=window.open('','_blank');if(!w)return;const content=document.getElementById('reportOutput').innerHTML;w.document.write(`<!DOCTYPE html><html><head><title>BelForce Report</title><style>body{font-family:sans-serif;padding:2rem}table{width:100%;border-collapse:collapse;margin:1rem 0}th,td{padding:.4rem .6rem;border:1px solid #ddd;text-align:left;font-size:.85rem}th{background:#f5f5f5}.badge{padding:2px 8px;border-radius:10px;font-size:.75rem}</style></head><body>${content}</body></html>`);w.document.close();w.print()}
+function exportCSV(){
+const type=document.getElementById('reportType').value;
+let rows=[],filename='report.csv';
+if(type==='readiness'){
+filename='readiness.csv';
+rows=[['Unité','Total','Apte','En mission','En formation','En congé','Inapte','%']];
+appUnits.forEach(u=>{const up=appPersonnel.filter(p=>p.unit_id===u.id);const a=up.filter(p=>p.status==='apte').length;
+rows.push([u.name,up.length,a,up.filter(p=>p.status==='en_mission').length,up.filter(p=>p.status==='en_formation').length,up.filter(p=>p.status==='en_conge').length,up.filter(p=>p.status.startsWith('inapte')).length,up.length?Math.round(a/up.length*100):0])});
+}else if(type==='certs'){
+filename='certifications.csv';rows=[['Type','Valide','Expire bientôt','Expiré','Manquant']];
+appCertTypes.forEach(ct=>{const c=appCerts.filter(x=>x.cert_type_id===ct.id);rows.push([ct.name_fr,c.filter(x=>x.status==='valid').length,c.filter(x=>x.status==='expiring').length,c.filter(x=>x.status==='expired').length,Math.max(0,appPersonnel.length-c.length)])});
+}else{
+filename='personnel.csv';rows=[['Unité','Grade','Nom','Prénom','Statut','Fonction']];
+appPersonnel.forEach(p=>{const u=appUnits.find(x=>x.id===p.unit_id);rows.push([u?.name||'',rankLabel(p.rank),p.last_name,p.first_name,t(p.status),p.function||''])});
+}
+const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();
+}
+
+/* ===== SETTINGS ===== */
+function renderSettings(){
+let h=`<div class="tabs">
+<button class="tab active" onclick="switchSettingsTab(this,'stUnits')">${t('units_mgmt')}</button>
+<button class="tab" onclick="switchSettingsTab(this,'stCertTypes')">${t('cert_types_mgmt')}</button>
+<button class="tab" onclick="switchSettingsTab(this,'stProfile')">${t('profile')}</button>
+<button class="tab" onclick="switchSettingsTab(this,'stDemo')">${t('demo_data')}</button>
+</div>`;
+// Units tab
+h+=`<div class="tab-content active" id="stUnits">
+<button class="btn btn-primary btn-sm" style="margin-bottom:1rem" onclick="openUnitModal()">+ ${t('add')}</button>
+<div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th>${t('unit')}</th><th>${t('abbreviation')}</th><th>${t('type')}</th><th>${t('commander')}</th><th>${t('location')}</th><th></th></tr></thead><tbody>`;
+appUnits.forEach(u=>{h+=`<tr><td><strong>${esc(u.name)}</strong></td><td>${esc(u.abbreviation||'')}</td><td>${t(u.type)}</td><td>${esc(u.commander_name||'—')}</td><td>${esc(u.location||'—')}</td><td><button class="btn btn-outline btn-sm" onclick="openUnitModal('${u.id}')">${t('edit')}</button></td></tr>`});
+h+=`</tbody></table></div></div>`;
+// CertTypes tab
+h+=`<div class="tab-content" id="stCertTypes">
+<button class="btn btn-primary btn-sm" style="margin-bottom:1rem" onclick="openCertTypeModal()">+ ${t('add')}</button>
+<div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th>${t('name_fr')}</th><th>${t('name_nl')}</th><th>${t('category')}</th><th>${t('validity')}</th><th>${t('mandatory')}</th><th></th></tr></thead><tbody>`;
+appCertTypes.forEach(ct=>{h+=`<tr><td>${esc(ct.name_fr)}</td><td>${esc(ct.name_nl)}</td><td>${catLabel(ct.category)}</td><td>${ct.validity_months} ${t('validity').toLowerCase().includes('mois')?'':'mois'}</td><td>${ct.mandatory?'✓':'—'}</td><td><button class="btn btn-outline btn-sm" onclick="openCertTypeModal('${ct.id}')">${t('edit')}</button></td></tr>`});
+h+=`</tbody></table></div></div>`;
+// Profile tab
+h+=`<div class="tab-content" id="stProfile"><div class="card" style="max-width:400px">
+<div class="form-group"><label>${t('email')}</label><input value="${esc(currentUser?.email||'')}" disabled></div>
+<div class="form-group"><label>${t('language')}</label><select onchange="currentLang=this.value;localStorage.setItem('bf_lang',this.value);buildNav();renderAll()"><option value="fr" ${currentLang==='fr'?'selected':''}>Français</option><option value="nl" ${currentLang==='nl'?'selected':''}>Nederlands</option></select></div>
+<div class="form-group"><label>${t('theme')}</label><select onchange="document.documentElement.dataset.theme=this.value;localStorage.setItem('bf_theme',this.value)"><option value="light" ${document.documentElement.dataset.theme==='light'?'selected':''}>Light</option><option value="dark" ${document.documentElement.dataset.theme==='dark'?'selected':''}>Dark</option></select></div>
+</div></div>`;
+// Demo tab
+h+=`<div class="tab-content" id="stDemo"><div class="card" style="max-width:500px">
+<p style="margin-bottom:1rem;font-size:.85rem">Génère des données de démonstration : unités, personnel, certifications et déploiements.</p>
+<button class="btn btn-primary" onclick="seedDemoData()">${t('seed_demo')}</button>
+</div></div>`;
+document.getElementById('page-settings').innerHTML=h;
+}
+function switchSettingsTab(btn,tabId){
+btn.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
+btn.parentElement.parentElement.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+document.getElementById(tabId)?.classList.add('active');
+}
+
+/* ===== UNIT CRUD ===== */
+function openUnitModal(id){
+const u=id?appUnits.find(x=>x.id===id):null;
+const types=['composante','brigade','bataillon','compagnie','peloton','section','autre'];
+let h=`<div class="modal-header"><h3>${u?t('edit_unit'):t('new_unit')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+<div class="modal-body">
+<div class="form-group"><label>${t('unit')} *</label><input id="uName" value="${esc(u?.name||'')}"></div>
+<div class="form-row">
+<div class="form-group"><label>${t('abbreviation')}</label><input id="uAbbr" value="${esc(u?.abbreviation||'')}"></div>
+<div class="form-group"><label>${t('type')}</label><select id="uType">${types.map(tp=>`<option value="${tp}" ${u?.type===tp?'selected':''}>${t(tp)}</option>`).join('')}</select></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>${t('commander')}</label><input id="uCmd" value="${esc(u?.commander_name||'')}"></div>
+<div class="form-group"><label>${t('location')}</label><input id="uLoc" value="${esc(u?.location||'')}"></div>
+</div>
+<div class="form-group"><label>${t('parent_unit')}</label><select id="uParent"><option value="">—</option>${appUnits.filter(x=>x.id!==id).map(x=>`<option value="${x.id}" ${u?.parent_unit_id===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
+</div>
+<div class="modal-footer">
+${u?`<button class="btn btn-danger btn-sm" onclick="deleteUnit('${u.id}')">${t('delete')}</button>`:''}
+<button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
+<button class="btn btn-primary" onclick="saveUnit('${id||''}')">${t('save')}</button>
+</div>`;
+openModal(h);
+}
+async function saveUnit(id){
+const data={name:document.getElementById('uName').value.trim(),abbreviation:document.getElementById('uAbbr').value.trim()||null,type:document.getElementById('uType').value,commander_name:document.getElementById('uCmd').value.trim()||null,location:document.getElementById('uLoc').value.trim()||null,parent_unit_id:document.getElementById('uParent').value||null,owner_id:currentUser.id};
+if(!data.name)return showToast('Nom requis','error');
+let err;if(id){({error:err}=await sb.from('units').update(data).eq('id',id))}else{({error:err}=await sb.from('units').insert(data))}
+if(err)return showToast(err.message,'error');showToast(t('saved'));closeModal();loadAppData();
+}
+async function deleteUnit(id){if(!confirm(t('confirm_delete')))return;const{error}=await sb.from('units').delete().eq('id',id);if(error)return showToast(error.message,'error');showToast(t('deleted'));closeModal();loadAppData()}
+
+/* ===== CERT TYPE CRUD ===== */
+function openCertTypeModal(id){
+const ct=id?appCertTypes.find(x=>x.id===id):null;
+const cats=['combat','medical','physical','driving','security','other'];
+let h=`<div class="modal-header"><h3>${ct?t('edit_cert_type'):t('new_cert_type')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+<div class="modal-body">
+<div class="form-row">
+<div class="form-group"><label>${t('name_fr')} *</label><input id="ctFr" value="${esc(ct?.name_fr||'')}"></div>
+<div class="form-group"><label>${t('name_nl')} *</label><input id="ctNl" value="${esc(ct?.name_nl||'')}"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>${t('category')}</label><select id="ctCat">${cats.map(c=>`<option value="${c}" ${ct?.category===c?'selected':''}>${catLabel(c)}</option>`).join('')}</select></div>
+<div class="form-group"><label>${t('validity')}</label><input type="number" id="ctMonths" value="${ct?.validity_months||12}" min="1"></div>
+</div>
+<div class="form-group"><label><input type="checkbox" id="ctMand" ${ct?.mandatory?'checked':''}> ${t('mandatory')}</label></div>
+</div>
+<div class="modal-footer">
+${ct?`<button class="btn btn-danger btn-sm" onclick="deleteCertType('${ct.id}')">${t('delete')}</button>`:''}
+<button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
+<button class="btn btn-primary" onclick="saveCertType('${id||''}')">${t('save')}</button>
+</div>`;
+openModal(h);
+}
+async function saveCertType(id){
+const data={name_fr:document.getElementById('ctFr').value.trim(),name_nl:document.getElementById('ctNl').value.trim(),category:document.getElementById('ctCat').value,validity_months:parseInt(document.getElementById('ctMonths').value)||12,mandatory:document.getElementById('ctMand').checked,owner_id:currentUser.id};
+if(!data.name_fr||!data.name_nl)return showToast('Noms requis','error');
+let err;if(id){({error:err}=await sb.from('cert_types').update(data).eq('id',id))}else{({error:err}=await sb.from('cert_types').insert(data))}
+if(err)return showToast(err.message,'error');showToast(t('saved'));closeModal();loadAppData();
+}
+async function deleteCertType(id){if(!confirm(t('confirm_delete')))return;const{error}=await sb.from('cert_types').delete().eq('id',id);if(error)return showToast(error.message,'error');showToast(t('deleted'));closeModal();loadAppData()}
+
+/* ===== DEMO DATA ===== */
+async function seedDemoData(){
+try{
+const uid=currentUser.id;
+// Units
+const units=[
+{name:'1er Bataillon Carabiniers Prince Baudouin',abbreviation:'1CPB',type:'bataillon',commander_name:'LtCol De Smet',location:'Bourg-Léopold',owner_id:uid},
+{name:'Compagnie Alpha',abbreviation:'Cie A',type:'compagnie',commander_name:'Cpt Janssens',location:'Bourg-Léopold',owner_id:uid},
+{name:'Compagnie Bravo',abbreviation:'Cie B',type:'compagnie',commander_name:'Cpt Dubois',location:'Bourg-Léopold',owner_id:uid},
+{name:'Compagnie Appui',abbreviation:'Cie App',type:'compagnie',commander_name:'Cpt Peeters',location:'Bourg-Léopold',owner_id:uid}
+];
+const{data:uData}=await sb.from('units').insert(units).select();
+if(!uData)throw new Error('Units insert failed');
+const uIds=uData.map(u=>u.id);
+
+// Cert types
+const certTypes=[
+{name_fr:'Tir individuel (ISTA)',name_nl:'Individueel schieten (ISTA)',category:'combat',validity_months:12,mandatory:true,owner_id:uid},
+{name_fr:'Secourisme au combat (TCCC)',name_nl:'Gevechtsredding (TCCC)',category:'medical',validity_months:24,mandatory:true,owner_id:uid},
+{name_fr:'CBRN',name_nl:'CBRN',category:'combat',validity_months:12,mandatory:true,owner_id:uid},
+{name_fr:'Condition physique (PACE)',name_nl:'Fysieke conditie (PACE)',category:'physical',validity_months:12,mandatory:true,owner_id:uid},
+{name_fr:'Permis militaire B',name_nl:'Militair rijbewijs B',category:'driving',validity_months:60,mandatory:false,owner_id:uid},
+{name_fr:'Permis militaire C',name_nl:'Militair rijbewijs C',category:'driving',validity_months:60,mandatory:false,owner_id:uid},
+{name_fr:'Habilitation Confidentiel',name_nl:'Veiligheidsmachtiging Vertrouwelijk',category:'security',validity_months:60,mandatory:false,owner_id:uid},
+{name_fr:'Premiers soins',name_nl:'Eerste hulp',category:'medical',validity_months:24,mandatory:false,owner_id:uid},
+{name_fr:'Formation tactique',name_nl:'Tactische vorming',category:'combat',validity_months:12,mandatory:false,owner_id:uid},
+{name_fr:'Topographie',name_nl:'Topografie',category:'combat',validity_months:24,mandatory:false,owner_id:uid},
+{name_fr:'Habilitation Secret',name_nl:'Veiligheidsmachtiging Geheim',category:'security',validity_months:60,mandatory:false,owner_id:uid}
+];
+const{data:ctData}=await sb.from('cert_types').insert(certTypes).select();
+if(!ctData)throw new Error('CertTypes insert failed');
+const ctIds=ctData.map(c=>c.id);
+
+// Personnel
+const names=[
+{rank:'ltcol',ln:'De Smet',fn:'Marc',unit:0,func:'Commandant Bn',status:'apte'},
+{rank:'cpt',ln:'Janssens',fn:'Thomas',unit:1,func:'Commandant Cie',status:'apte'},
+{rank:'cpt',ln:'Dubois',fn:'Julien',unit:2,func:'Commandant Cie',status:'apte'},
+{rank:'cpt',ln:'Peeters',fn:'Koen',unit:3,func:'Commandant Cie',status:'apte'},
+{rank:'lt',ln:'Vandenberghe',fn:'Pieter',unit:1,func:'Chef Peloton',status:'apte'},
+{rank:'lt',ln:'Lambert',fn:'Sophie',unit:2,func:'Chef Peloton',status:'en_mission'},
+{rank:'adj',ln:'Claessens',fn:'Wim',unit:1,func:'Adjudant Cie',status:'apte'},
+{rank:'adj',ln:'Martin',fn:'François',unit:2,func:'Adjudant Cie',status:'apte'},
+{rank:'1sgt',ln:'Willems',fn:'Jan',unit:1,func:'Chef de groupe',status:'apte'},
+{rank:'1sgt',ln:'Dupont',fn:'Luc',unit:2,func:'Chef de groupe',status:'en_conge'},
+{rank:'sgt',ln:'Mertens',fn:'Kevin',unit:1,func:'Chef de groupe',status:'apte'},
+{rank:'sgt',ln:'Leclercq',fn:'Antoine',unit:2,func:'Chef de groupe',status:'en_formation'},
+{rank:'sgt',ln:'Hermans',fn:'Bram',unit:3,func:'Chef mortier',status:'apte'},
+{rank:'1cpl',ln:'Jacobs',fn:'Nathan',unit:1,func:'Grenadier',status:'apte'},
+{rank:'1cpl',ln:'Renard',fn:'Maxime',unit:2,func:'Tireur',status:'apte'},
+{rank:'1cpl',ln:'Goossens',fn:'Tom',unit:3,func:'Conducteur',status:'inapte_temp'},
+{rank:'cpl',ln:'Maes',fn:'Stef',unit:1,func:'Grenadier',status:'apte'},
+{rank:'cpl',ln:'Simon',fn:'Alexandre',unit:2,func:'Tireur AT',status:'apte'},
+{rank:'cpl',ln:'Wouters',fn:'Dries',unit:3,func:'Opérateur radio',status:'apte'},
+{rank:'sdt',ln:'Dumont',fn:'Lucas',unit:1,func:'Fusilier',status:'apte'},
+{rank:'sdt',ln:'Pauwels',fn:'Robin',unit:1,func:'Fusilier',status:'apte'},
+{rank:'sdt',ln:'Michel',fn:'Hugo',unit:2,func:'Fusilier',status:'apte'},
+{rank:'sdt',ln:'Vermeersch',fn:'Jef',unit:2,func:'Fusilier',status:'en_mission'},
+{rank:'sdt',ln:'Laurent',fn:'Emile',unit:3,func:'Conducteur',status:'apte'},
+{rank:'sdt',ln:'Claes',fn:'Arne',unit:1,func:'Fusilier',status:'apte'},
+{rank:'sdt',ln:'Lejeune',fn:'Rémy',unit:2,func:'Fusilier',status:'apte'},
+{rank:'sdt',ln:'Baert',fn:'Sander',unit:3,func:'Servant mortier',status:'apte'},
+{rank:'sdt',ln:'Fontaine',fn:'Arthur',unit:1,func:'Fusilier',status:'en_formation'},
+{rank:'sdt',ln:'Coppens',fn:'Thibaut',unit:3,func:'Mécanicien',status:'apte'},
+{rank:'1sdt',ln:'Hendrickx',fn:'Mathieu',unit:2,func:'Fusilier',status:'apte'}
+];
+const persData=names.map(n=>{
+const med=new Date();med.setMonth(med.getMonth()+Math.floor(Math.random()*12)-2);
+return{rank:n.rank,last_name:n.ln,first_name:n.fn,unit_id:uIds[n.unit],function:n.func,status:n.status,medical_expiry:med.toISOString().slice(0,10),matricule:'BE'+String(Math.floor(Math.random()*90000)+10000),owner_id:uid};
+});
+const{data:pData}=await sb.from('personnel').insert(persData).select();
+if(!pData)throw new Error('Personnel insert failed');
+
+// Certifications
+const certs=[];
+const mandatoryCtIds=ctIds.slice(0,4); // ISTA, TCCC, CBRN, PACE
+pData.forEach(p=>{
+mandatoryCtIds.forEach((ctId,i)=>{
+const obt=new Date();obt.setMonth(obt.getMonth()-Math.floor(Math.random()*14));
+const exp=new Date(obt);exp.setMonth(exp.getMonth()+certTypes[i].validity_months);
+certs.push({personnel_id:p.id,cert_type_id:ctId,obtained_date:obt.toISOString().slice(0,10),expiry_date:exp.toISOString().slice(0,10),status:exp<new Date()?'expired':daysDiff(exp.toISOString().slice(0,10))<=30?'expiring':'valid',owner_id:uid});
+});
+// Random extra certs
+if(Math.random()>0.5){
+const extra=ctIds[4+Math.floor(Math.random()*(ctIds.length-4))];
+const obt=new Date();obt.setMonth(obt.getMonth()-Math.floor(Math.random()*24));
+const ct=certTypes.find(c=>ctData.find(x=>x.id===extra)?.name_fr===c.name_fr)||certTypes[4];
+const exp=new Date(obt);exp.setMonth(exp.getMonth()+(ct.validity_months||12));
+certs.push({personnel_id:p.id,cert_type_id:extra,obtained_date:obt.toISOString().slice(0,10),expiry_date:exp.toISOString().slice(0,10),status:'valid',owner_id:uid});
+}
+});
+await sb.from('certifications').insert(certs);
+
+// Deployments
+const deploys=[
+{personnel_id:pData[5].id,mission_name:'EUTM Mali',operation:'EUTM',location:'Bamako, Mali',start_date:'2025-09-01',end_date:'2026-03-01',status:'active',owner_id:uid},
+{personnel_id:pData[22].id,mission_name:'Enhanced Forward Presence',operation:'eFP',location:'Tapa, Estonie',start_date:'2025-10-15',end_date:'2026-04-15',status:'active',owner_id:uid},
+{personnel_id:pData[0].id,mission_name:'UNIFIL',operation:'UNIFIL',location:'Naqoura, Liban',start_date:'2026-06-01',end_date:'2026-12-01',status:'planned',owner_id:uid}
+];
+await sb.from('deployments').insert(deploys);
+
+showToast(t('seed_success'));
+loadAppData();
+}catch(e){console.error(e);showToast(e.message||t('error_occurred'),'error')}
+}
+
+/* ===== GLOBAL EVENTS ===== */
+document.addEventListener('DOMContentLoaded',()=>{
+// Theme
+const savedTheme=localStorage.getItem('bf_theme')||'light';
+document.documentElement.dataset.theme=savedTheme;
+document.getElementById('themeBtn').innerHTML=savedTheme==='dark'?'&#9788;':'&#9790;';
+// Session
+checkSession();
+// Modal close on overlay click
+document.getElementById('modalOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+// Keyboard
+document.addEventListener('keydown',e=>{
+if(e.key==='Escape'){closeModal();closeDetail()}
+if(e.key==='n'&&!e.ctrlKey&&!e.metaKey&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){
+e.preventDefault();
+if(currentPage==='personnel')openPersonnelModal();
+else if(currentPage==='deployments')openDeploymentModal();
+}
+});
+// Global search
+document.getElementById('globalSearch').addEventListener('input',e=>{
+if(currentPage==='personnel'){persFilter.search=e.target.value;persPage=1;renderPersonnel()}
+});
+});
+// PWA
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}
+</script>
+</body>
+</html>
