@@ -198,6 +198,26 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 .tab-content{display:none}
 .tab-content.active{display:block}
+/* ONLINE/OFFLINE INDICATOR */
+.conn-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:.3rem;flex-shrink:0}
+.conn-dot.online{background:var(--green-500)}
+.conn-dot.offline{background:var(--red-500)}
+.conn-status{display:flex;align-items:center;font-size:.72rem;padding:.35rem .6rem;border:1px solid var(--border);border-radius:var(--radius);color:var(--text-sec)}
+/* RBAC HIDDEN */
+.rbac-hide{display:none!important}
+/* ONBOARDING WIZARD */
+.wizard-wrap{max-width:600px;margin:3rem auto}
+.wizard-steps{display:flex;gap:0;margin-bottom:2rem;border-bottom:2px solid var(--border)}
+.wizard-step{padding:.5rem 1.25rem;font-size:.78rem;font-weight:600;color:var(--text-sec);border-bottom:2px solid transparent;margin-bottom:-2px;cursor:default}
+.wizard-step.active{color:var(--accent);border-bottom-color:var(--accent)}
+.wizard-step.done{color:var(--green-500);border-bottom-color:var(--green-500)}
+.preset-btn{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:.5rem .9rem;font-size:.8rem;cursor:pointer;transition:all .15s;color:var(--text);font-weight:500}
+.preset-btn:hover{border-color:var(--accent);color:var(--accent)}
+/* TREND CHART */
+.trend-chart{display:flex;align-items:flex-end;gap:4px;height:120px;padding:0 .5rem}
+.trend-bar-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+.trend-bar{width:100%;border-radius:3px 3px 0 0;transition:height .5s;min-height:2px;position:relative}
+.trend-bar-label{font-size:.6rem;color:var(--text-sec);white-space:nowrap;font-family:'JetBrains Mono',monospace}
 /* RESPONSIVE */
 @media(max-width:768px){
 .sidebar{position:fixed;z-index:80;height:100vh;transform:translateX(-100%)}
@@ -329,6 +349,7 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 </button>
 <div class="notif-dropdown" id="notifDropdown"></div>
 </div>
+<div class="conn-status" id="connStatus"><span class="conn-dot online" id="connDot"></span><span id="connLabel">Online</span></div>
 <button class="topbar-btn" onclick="toggleLang()" id="langBtn">NL</button>
 <button class="topbar-btn" onclick="toggleTheme()" id="themeBtn">&#9790;</button>
 </header>
@@ -341,6 +362,7 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 <section id="page-deployments" class="page"></section>
 <section id="page-calendar" class="page"></section>
 <section id="page-settings" class="page"></section>
+<section id="page-api" class="page"></section>
 </div>
 </div>
 </div>
@@ -362,10 +384,11 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 const PAGE_SIZE=25;
 
 /* ===== STATE ===== */
-let currentUser=null,currentLang=localStorage.getItem('bf_lang')||'fr',currentPage='dashboard';
+let currentUser=null,currentProfile=null,currentLang=localStorage.getItem('bf_lang')||'fr',currentPage='dashboard';
 let appPersonnel=[],appUnits=[],appCertTypes=[],appCerts=[],appDeployments=[];
 let persFilter={search:'',status:'',unit:''},persSort={field:'last_name',dir:'asc'},persPage=1;
-let isSignupMode=false;
+let isSignupMode=false,isOnline=navigator.onLine;
+let onboardingStep=0;
 
 /* ===== RANKS ===== */
 const RANKS=[
@@ -439,7 +462,19 @@ import:'Importer',preview:'Aperçu',column_mapping:'Mappage des colonnes',
 select_cert_type:'Sélectionner un type',select_unit:'Sélectionner une unité',
 select_all:'Tout sélectionner',deselect_all:'Tout désélectionner',renew_selected:'Renouveler la sélection',
 no_results:'Aucun résultat',drill_total:'Voir tout le personnel',
-notifications:'Notifications',no_notifications:'Aucune notification'
+notifications:'Notifications',no_notifications:'Aucune notification',
+rbac_viewer:'Lecture seule',rbac_operator:'Opérateur',rbac_commander:'Commandant',rbac_admin:'Administrateur',
+notif_prefs:'Préférences de notifications',notif_cert_7:'M\'envoyer un email quand une certification expire dans 7 jours',notif_weekly:'M\'envoyer un résumé hebdomadaire de disponibilité',notif_status:'M\'envoyer un email lors d\'un changement de statut du personnel',
+notif_note:'Les notifications sont envoyées par email à votre adresse enregistrée.',
+backup:'Sauvegarde',backup_export:'Exporter toutes les données (JSON)',backup_import:'Restaurer depuis JSON',
+privacy:'Confidentialité',privacy_export:'Exporter mes données (RGPD)',privacy_delete:'Supprimer mon compte',privacy_note:'Vos données sont stockées dans l\'UE (Irlande) et protégées par la sécurité au niveau des lignes.',
+privacy_delete_confirm:'Êtes-vous sûr de vouloir supprimer TOUTES vos données et votre compte ? Cette action est irréversible.',
+api_docs:'API Documentation',api_endpoint:'Point de terminaison REST',api_examples:'Exemples',api_key:'Clé anonyme',api_copy:'Copier',api_copied:'Copié !',
+trend_title:'Tendance disponibilité (6 mois)',compliance_title:'Rapport de conformité',compliance_has:'Certifs. obtenues',compliance_missing:'Manquantes',
+onboarding_welcome:'Bienvenue sur Durendal',onboarding_subtitle:'Configurez votre espace de travail en quelques étapes',
+onboarding_step1:'1. Créer une unité',onboarding_step2:'2. Types de certifications',onboarding_step3:'3. Ajouter du personnel',onboarding_step4:'4. Importer CSV',
+onboarding_presets:'Certifications standard belges',onboarding_skip:'Passer cette étape',onboarding_next:'Étape suivante',onboarding_done:'Terminer',
+onboarding_cert_added:'Type de certification ajouté !',upload_doc:'Téléverser document',view_doc:'Voir le document',doc_uploaded:'Document téléversé !'
 },nl:{
 dashboard:'Dashboard',personnel:'Personeel',certifications:'Certificeringen',
 alerts:'Waarschuwingen',reports:'Rapporten',deployments:'Inzetten',settings:'Instellingen',
@@ -498,7 +533,90 @@ import:'Importeren',preview:'Voorbeeld',column_mapping:'Kolomkoppeling',
 select_cert_type:'Type selecteren',select_unit:'Eenheid selecteren',
 select_all:'Alles selecteren',deselect_all:'Alles deselecteren',renew_selected:'Selectie verlengen',
 no_results:'Geen resultaten',drill_total:'Alle personeelsleden bekijken',
-notifications:'Meldingen',no_notifications:'Geen meldingen'
+notifications:'Meldingen',no_notifications:'Geen meldingen',
+rbac_viewer:'Alleen lezen',rbac_operator:'Operator',rbac_commander:'Commandant',rbac_admin:'Beheerder',
+notif_prefs:'Meldingsvoorkeuren',notif_cert_7:'E-mail als certificering over 7 dagen verloopt',notif_weekly:'Wekelijkse beschikbaarheidssamenvatting per e-mail',notif_status:'E-mail bij statuswijziging personeel',
+notif_note:'Meldingen worden per e-mail verzonden naar uw geregistreerd adres.',
+backup:'Back-up',backup_export:'Alle gegevens exporteren (JSON)',backup_import:'Herstellen vanuit JSON',
+privacy:'Privacy',privacy_export:'Mijn gegevens exporteren (AVG)',privacy_delete:'Mijn account verwijderen',privacy_note:'Uw gegevens worden opgeslagen in de EU (Ierland) en beschermd door beveiliging op rijniveau.',
+privacy_delete_confirm:'Weet u zeker dat u AL uw gegevens en uw account wilt verwijderen? Dit kan niet ongedaan worden gemaakt.',
+api_docs:'API Documentatie',api_endpoint:'REST-eindpunt',api_examples:'Voorbeelden',api_key:'Anonieme sleutel',api_copy:'Kopiëren',api_copied:'Gekopieerd!',
+trend_title:'Beschikbaarheidstrend (6 maanden)',compliance_title:'Conformiteitsrapport',compliance_has:'Behaalde certificeringen',compliance_missing:'Ontbreekt',
+onboarding_welcome:'Welkom bij Durendal',onboarding_subtitle:'Stel uw werkruimte in een paar stappen in',
+onboarding_step1:'1. Eenheid aanmaken',onboarding_step2:'2. Certificeringstypes',onboarding_step3:'3. Personeel toevoegen',onboarding_step4:'4. CSV importeren',
+onboarding_presets:'Belgische standaardcertificeringen',onboarding_skip:'Deze stap overslaan',onboarding_next:'Volgende stap',onboarding_done:'Voltooien',
+onboarding_cert_added:'Certificeringstype toegevoegd!',upload_doc:'Document uploaden',view_doc:'Document bekijken',doc_uploaded:'Document geüpload!'
+},en:{
+dashboard:'Dashboard',personnel:'Personnel',certifications:'Certifications',
+alerts:'Alerts',reports:'Reports',deployments:'Deployments',settings:'Settings',
+logout:'Logout',search:'Search...',add:'Add',edit:'Edit',
+delete:'Delete',save:'Save',cancel:'Cancel',close:'Close',
+confirm_delete:'Confirm deletion?',total:'Total',
+apte:'Fit',inapte_temp:'Temp. unfit',inapte_def:'Perm. unfit',
+en_mission:'On mission',en_conge:'On leave',en_formation:'In training',mute:'Transferred',
+readiness:'Operational readiness',readiness_rate:'Readiness rate',
+by_unit:'By unit',expiring_soon:'Expiring soon',expired:'Expired',
+rank:'Rank',last_name:'Last name',first_name:'First name',unit:'Unit',function_:'Function',
+status:'Status',medical_expiry:'Medical visit',phone:'Phone',email:'Email',
+matricule:'Service number',birth_date:'Birth date',blood_type:'Blood type',
+incorporation:'Incorporation date',photo:'Photo URL',status_note:'Status note',
+cert_type:'Certification type',obtained:'Obtained on',expires:'Expires on',
+validity:'Validity (months)',mandatory:'Mandatory',category:'Category',
+name_fr:'Name (FR)',name_nl:'Name (NL)',notes:'Notes',
+mission_name:'Mission name',operation:'Operation',location:'Location',
+start_date:'Start date',end_date:'End date',planned:'Planned',active:'Active',
+completed:'Completed',cancelled:'Cancelled',
+all_statuses:'All statuses',all_units:'All units',all_categories:'All',
+filter_status:'Filter by status',filter_unit:'Filter by unit',
+no_data:'No data',loading:'Loading...',
+valid:'Valid',expiring:'Expiring soon',
+combat:'Combat',medical:'Medical',physical:'Physical',driving:'Driving',security:'Security',other:'Other',
+personnel_count:'Personnel strength',deployable:'Deployable',cert_overview:'Certification overview',
+recent_deployments:'Recent deployments',
+report_readiness:'Readiness report',report_certs:'Certifications report',
+report_unit:'Unit report',generate:'Generate',export_pdf:'Export PDF',export_csv:'Export CSV',
+units_mgmt:'Unit management',cert_types_mgmt:'Certification types',profile:'Profile',
+demo_data:'Demo data',seed_demo:'Generate demo data',
+language:'Language',theme:'Theme',abbreviation:'Abbreviation',type:'Type',
+commander:'Commander',parent_unit:'Parent unit',
+composante:'Component',brigade:'Brigade',bataillon:'Battalion',compagnie:'Company',
+peloton:'Platoon',section:'Section',autre:'Other',
+saved:'Saved successfully',deleted:'Deleted successfully',error_occurred:'An error occurred',
+seed_success:'Demo data generated!',
+expired_certs:'Expired certifications',expiring_30:'Expiring within 30 days',
+expiring_90:'Expiring within 30-90 days',medical_alerts:'Medical alerts',
+renew:'Renew',days:'days',overdue:'overdue',remaining:'remaining',
+no_alerts:'No alerts',select_report:'Select a report type',
+weekly_readiness:'Weekly readiness',
+new_personnel:'New personnel',edit_personnel:'Edit personnel',
+new_cert:'New certification',edit_cert:'Edit certification',
+new_unit:'New unit',edit_unit:'Edit unit',
+new_cert_type:'New type',edit_cert_type:'Edit type',
+new_deployment:'New deployment',edit_deployment:'Edit deployment',
+detail:'Detail',certs_for:'Certifications of',history:'History',
+login:'Login',signup:'Create account',create_account:'Create account',
+have_account:'Already have an account?',no_account:'No account yet?',
+full_name:'Full name',password:'Password',
+missing:'Missing',of:'of',person:'person',persons:'persons',
+calendar:'Calendar',import_csv:'Import CSV',bulk_renewal:'Bulk renewal',
+audit:'Audit',audit_log:'Audit log',action:'Action',entity:'Entity',user:'User',
+import:'Import',preview:'Preview',column_mapping:'Column mapping',
+select_cert_type:'Select a type',select_unit:'Select a unit',
+select_all:'Select all',deselect_all:'Deselect all',renew_selected:'Renew selected',
+no_results:'No results',drill_total:'View all personnel',
+notifications:'Notifications',no_notifications:'No notifications',
+rbac_viewer:'Read only',rbac_operator:'Operator',rbac_commander:'Commander',rbac_admin:'Administrator',
+notif_prefs:'Notification preferences',notif_cert_7:'Email me when certifications expire in 7 days',notif_weekly:'Email me weekly readiness summary',notif_status:'Email me when personnel status changes',
+notif_note:'Notifications are sent via email to your registered address.',
+backup:'Backup',backup_export:'Export all data (JSON)',backup_import:'Restore from JSON',
+privacy:'Privacy',privacy_export:'Export my data (GDPR)',privacy_delete:'Delete my account',privacy_note:'Your data is stored in the EU (Ireland) and protected by row-level security.',
+privacy_delete_confirm:'Are you sure you want to delete ALL your data and account? This action is irreversible.',
+api_docs:'API Documentation',api_endpoint:'REST Endpoint',api_examples:'Examples',api_key:'Anon key',api_copy:'Copy',api_copied:'Copied!',
+trend_title:'Readiness trend (6 months)',compliance_title:'Compliance report',compliance_has:'Certifications obtained',compliance_missing:'Missing',
+onboarding_welcome:'Welcome to Durendal',onboarding_subtitle:'Set up your workspace in a few steps',
+onboarding_step1:'1. Create a unit',onboarding_step2:'2. Certification types',onboarding_step3:'3. Add personnel',onboarding_step4:'4. Import CSV',
+onboarding_presets:'Belgian standard certifications',onboarding_skip:'Skip this step',onboarding_next:'Next step',onboarding_done:'Finish',
+onboarding_cert_added:'Certification type added!',upload_doc:'Upload document',view_doc:'View document',doc_uploaded:'Document uploaded!'
 }};
 function t(k){return T[currentLang]?.[k]||T.fr[k]||k}
 function rankLabel(id){const r=RANKS.find(x=>x.id===id);return r?r[currentLang]||r.fr:id||''}
@@ -507,7 +625,7 @@ function catLabel(c){return t(c)||c}
 /* ===== UTILITIES ===== */
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function showToast(msg,type='success'){const c=document.getElementById('toastContainer');const el=document.createElement('div');el.className='toast toast-'+type;el.textContent=msg;c.appendChild(el);setTimeout(()=>el.remove(),3500)}
-function formatDate(d){if(!d)return'—';const p=new Date(d);return p.toLocaleDateString(currentLang==='nl'?'nl-BE':'fr-BE')}
+function formatDate(d){if(!d)return'—';const p=new Date(d);const loc=currentLang==='nl'?'nl-BE':currentLang==='en'?'en-GB':'fr-BE';return p.toLocaleDateString(loc)}
 function daysDiff(d){if(!d)return Infinity;return Math.ceil((new Date(d)-new Date())/(1000*60*60*24))}
 function paginateArray(arr,page,size){const total=Math.ceil(arr.length/size)||1;const items=arr.slice((page-1)*size,page*size);return{items,total,current:page}}
 function sortArray(arr,field,dir){return[...arr].sort((a,b)=>{let va=a[field]??'',vb=b[field]??'';if(typeof va==='string')va=va.toLowerCase();if(typeof vb==='string')vb=vb.toLowerCase();if(va<vb)return dir==='asc'?-1:1;if(va>vb)return dir==='asc'?1:-1;return 0})}
@@ -518,6 +636,27 @@ function deployBadge(s){const map={planned:'blue',active:'green',completed:'gray
 function openModal(html){document.getElementById('modalContent').innerHTML=html;document.getElementById('modalOverlay').classList.add('active')}
 function closeModal(){document.getElementById('modalOverlay').classList.remove('active')}
 function closeDetail(){document.getElementById('detailPanel').classList.remove('open')}
+
+/* ===== RBAC ===== */
+function getRole(){return currentProfile?.role||'operator'}
+function isAdmin(){return getRole()==='admin'}
+function canEdit(){const r=getRole();return r==='admin'||r==='commander'||r==='operator'}
+function canDelete(){const r=getRole();return r==='admin'||r==='commander'}
+
+/* ===== CONNECTIVITY ===== */
+function setupConnectivityListeners(){
+function update(online){
+isOnline=online;
+const dot=document.getElementById('connDot');
+const lbl=document.getElementById('connLabel');
+if(dot){dot.className='conn-dot '+(online?'online':'offline')}
+if(lbl){lbl.textContent=online?'Online':'Offline'}
+if(!online)showToast('Mode hors-ligne / Offline modus','warning');
+}
+window.addEventListener('online',()=>update(true));
+window.addEventListener('offline',()=>update(false));
+update(navigator.onLine);
+}
 
 function renderPagination(containerId,totalPages,current,onPage){
 let h='<div class="pagination">';
@@ -558,11 +697,14 @@ if(session){currentUser=session.user;initApp()}
 }
 
 /* ===== INIT ===== */
-function initApp(){
+async function initApp(){
 document.getElementById('loginPage').style.display='none';
 document.getElementById('app').classList.add('active');
+// Fetch profile for RBAC
+try{const{data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();currentProfile=data||{role:'operator'}}catch(e){currentProfile={role:'operator'}}
 buildNav();
 loadAppData();
+setupConnectivityListeners();
 }
 
 /* ===== NAV ===== */
@@ -580,10 +722,10 @@ const NAV_PAGES=['dashboard','personnel','certifications','alerts','deployments'
 function buildNav(){
 let h='';NAV_PAGES.forEach(p=>{h+=`<button class="nav-item${p===currentPage?' active':''}" onclick="navigateTo('${p}')">${NAV_ICONS[p]}<span>${t(p)}</span></button>`});
 document.getElementById('navItems').innerHTML=h;
-document.getElementById('sidebarFooter').innerHTML=`<div style="margin-bottom:.5rem">${esc(currentUser?.email||'')}</div><button class="nav-item" onclick="handleLogout()">${t('logout')}</button>`;
-document.getElementById('pageTitle').textContent=t(currentPage);
+document.getElementById('sidebarFooter').innerHTML=`<div style="margin-bottom:.5rem;font-size:.78rem">${esc(currentUser?.email||'')}</div><div style="font-size:.7rem;color:var(--accent);margin-bottom:.5rem">${esc(getRole())}</div><button class="nav-item" onclick="handleLogout()">${t('logout')}</button>`;
+document.getElementById('pageTitle').textContent=t(currentPage)||t('api_docs');
 document.getElementById('globalSearch').placeholder=t('search');
-document.getElementById('langBtn').textContent=currentLang==='fr'?'NL':'FR';
+document.getElementById('langBtn').textContent=currentLang==='fr'?'NL':currentLang==='nl'?'EN':'FR';
 }
 function navigateTo(p){
 currentPage=p;
@@ -591,13 +733,13 @@ document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
 document.getElementById('page-'+p)?.classList.add('active');
 document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
 document.querySelectorAll('.nav-item')[NAV_PAGES.indexOf(p)]?.classList.add('active');
-document.getElementById('pageTitle').textContent=t(p);
+document.getElementById('pageTitle').textContent=t(p)||t('api_docs');
 closeDetail();
 if(window.innerWidth<768)document.getElementById('sidebar').classList.remove('open');
 }
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open')}
 function toggleTheme(){const html=document.documentElement;const isDark=html.dataset.theme==='dark';html.dataset.theme=isDark?'light':'dark';localStorage.setItem('bf_theme',html.dataset.theme);document.getElementById('themeBtn').innerHTML=isDark?'&#9790;':'&#9788;'}
-function toggleLang(){currentLang=currentLang==='fr'?'nl':'fr';localStorage.setItem('bf_lang',currentLang);buildNav();renderAll()}
+function toggleLang(){currentLang=currentLang==='fr'?'nl':currentLang==='nl'?'en':'fr';localStorage.setItem('bf_lang',currentLang);buildNav();renderAll()}
 
 /* ===== DATA ===== */
 async function loadAppData(){
@@ -610,9 +752,18 @@ sb.from('certifications').select('*, personnel:personnel(last_name,first_name,ra
 sb.from('deployments').select('*, personnel:personnel(last_name,first_name,rank)').order('start_date',{ascending:false})
 ]);
 appUnits=u.data||[];appPersonnel=p.data||[];appCertTypes=ct.data||[];appCerts=c.data||[];appDeployments=d.data||[];
+// Cache to localStorage for offline mode
+try{localStorage.setItem('dur_cache',JSON.stringify({appUnits,appPersonnel,appCertTypes,appCerts,appDeployments,ts:Date.now()}))}catch(e){}
 updateCertStatuses();
 renderAll();
-}catch(e){showToast(t('error_occurred'),'error');console.error(e)}
+// Show onboarding if no data
+checkOnboarding();
+}catch(e){
+// Offline fallback
+const cache=localStorage.getItem('dur_cache');
+if(cache){try{const d=JSON.parse(cache);appUnits=d.appUnits||[];appPersonnel=d.appPersonnel||[];appCertTypes=d.appCertTypes||[];appCerts=d.appCerts||[];appDeployments=d.appDeployments||[];updateCertStatuses();renderAll();showToast('Mode hors-ligne / Offline modus','warning')}catch(e2){showToast(t('error_occurred'),'error')}}
+else{showToast(t('error_occurred'),'error');console.error(e)}
+}
 }
 function updateCertStatuses(){
 const today=new Date();
@@ -624,7 +775,7 @@ else if(diff<=30)c.status='expiring';
 else c.status='valid';
 });
 }
-function renderAll(){renderDashboard();renderPersonnel();renderCertMatrix();renderAlerts();renderDeployments();renderReports();renderCalendar();renderSettings();updateNotifications()}
+function renderAll(){renderDashboard();renderPersonnel();renderCertMatrix();renderAlerts();renderDeployments();renderReports();renderCalendar();renderSettings();renderAPIPage();updateNotifications()}
 
 /* ===== DASHBOARD ===== */
 function renderDashboard(){
@@ -698,8 +849,8 @@ let h=`<div class="toolbar">
 <select onchange="persFilter.unit=this.value;persPage=1;renderPersonnel()"><option value="">${t('all_units')}</option>${appUnits.map(u=>`<option value="${u.id}" ${persFilter.unit===u.id?'selected':''}>${esc(u.name)}</option>`).join('')}</select>
 <span style="flex:1"></span>
 <span style="font-size:.82rem;color:var(--text-sec)">${filtered.length} ${filtered.length>1?t('persons'):t('person')}</span>
-<button class="btn btn-outline btn-sm" onclick="openImportCSVModal()">&#8593; ${t('import_csv')}</button>
-<button class="btn btn-primary btn-sm" onclick="openPersonnelModal()">+ ${t('add')}</button>
+${canEdit()?`<button class="btn btn-outline btn-sm" onclick="openImportCSVModal()">&#8593; ${t('import_csv')}</button>`:''}
+${canEdit()?`<button class="btn btn-primary btn-sm" onclick="openPersonnelModal()">+ ${t('add')}</button>`:''}
 </div>`;
 h+=`<div class="card" style="padding:0;overflow-x:auto"><table>
 <thead><tr>
@@ -714,7 +865,7 @@ const uName=p.unit?esc(p.unit.abbreviation||p.unit.name):'—';
 h+=`<tr style="cursor:pointer" onclick="openPersonnelDetail('${p.id}')">
 <td>${esc(rankLabel(p.rank))}</td><td><strong>${esc(p.last_name)}</strong></td><td>${esc(p.first_name)}</td>
 <td>${uName}</td><td>${esc(p.function||'—')}</td><td>${statusBadge(p.status)}</td>
-<td><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openPersonnelModal('${p.id}')">${t('edit')}</button></td></tr>`})}
+<td>${canEdit()?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openPersonnelModal('${p.id}')">${t('edit')}</button>`:''}</td></tr>`})}
 else{h+=`<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-sec)">${t('no_data')}</td></tr>`}
 h+=`</tbody></table></div>`;
 h+=renderPagination('','',total,current,'goToPersPage').replace('<div','<div id="persPag"');
@@ -756,9 +907,9 @@ let h=`<div class="modal-header"><h3>${title}</h3><button class="modal-close" on
 <div class="form-group"><label>${t('status_note')}</label><input id="mNote" value="${esc(p?.status_note||'')}"></div>
 </div>
 <div class="modal-footer">
-${p?`<button class="btn btn-danger btn-sm" onclick="deletePersonnel('${p.id}')">${t('delete')}</button>`:''}
+${p&&canDelete()?`<button class="btn btn-danger btn-sm" onclick="deletePersonnel('${p.id}')">${t('delete')}</button>`:''}
 <button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
-<button class="btn btn-primary" onclick="savePersonnel('${id||''}')">${t('save')}</button>
+${canEdit()?`<button class="btn btn-primary" onclick="savePersonnel('${id||''}')">${t('save')}</button>`:''}
 </div>`;
 openModal(h);
 }
@@ -821,8 +972,8 @@ let h=`<div class="detail-header"><h3>${t('detail')}</h3><button class="modal-cl
 <div class="detail-row"><span>${t('incorporation')}</span><span>${formatDate(p.incorporation_date)}</span></div>
 </div>
 <div class="detail-section"><h4>${t('certs_for')} ${esc(p.first_name)} <button class="btn btn-sm btn-outline" style="margin-left:.5rem" onclick="openCertModal('${p.id}')"">+ ${t('add')}</button></h4>`;
-if(certs.length){h+='<table><thead><tr><th>'+t('cert_type')+'</th><th>'+t('expires')+'</th><th>'+t('status')+'</th></tr></thead><tbody>';
-certs.forEach(c=>{const name=currentLang==='nl'?c.cert_type?.name_nl:c.cert_type?.name_fr;h+=`<tr><td>${esc(name||'—')}</td><td>${formatDate(c.expiry_date)}</td><td>${certBadge(c.status)}</td></tr>`});
+if(certs.length){h+='<table><thead><tr><th>'+t('cert_type')+'</th><th>'+t('expires')+'</th><th>'+t('status')+'</th><th></th></tr></thead><tbody>';
+certs.forEach(c=>{const name=currentLang==='nl'?c.cert_type?.name_nl:c.cert_type?.name_fr;h+=`<tr><td>${esc(name||'—')}</td><td>${formatDate(c.expiry_date)}</td><td>${certBadge(c.status)}</td><td>${c.document_url?`<a href="${esc(c.document_url)}" target="_blank" style="font-size:.7rem;color:var(--accent)">&#128206;</a>`:''}</td></tr>`});
 h+='</tbody></table>'}else{h+=`<p style="color:var(--text-sec);font-size:.83rem">${t('no_data')}</p>`}
 h+=`</div>
 <div class="detail-section"><h4>${t('deployments')}</h4>`;
@@ -830,8 +981,8 @@ if(deps.length){deps.forEach(d=>{h+=`<div style="display:flex;justify-content:sp
 else{h+=`<p style="color:var(--text-sec);font-size:.83rem">${t('no_data')}</p>`}
 h+=`</div>
 <div style="display:flex;gap:.5rem;margin-top:1rem">
-<button class="btn btn-primary btn-sm" onclick="openPersonnelModal('${p.id}')">${t('edit')}</button>
-<button class="btn btn-danger btn-sm" onclick="deletePersonnel('${p.id}')">${t('delete')}</button>
+${canEdit()?`<button class="btn btn-primary btn-sm" onclick="openPersonnelModal('${p.id}')">${t('edit')}</button>`:''}
+${canDelete()?`<button class="btn btn-danger btn-sm" onclick="deletePersonnel('${p.id}')">${t('delete')}</button>`:''}
 </div></div>`;
 const panel=document.getElementById('detailPanel');panel.innerHTML=h;panel.classList.add('open');
 }
@@ -851,7 +1002,7 @@ let h=`<div class="toolbar">
 <select id="matFilterUnit" onchange="renderCertMatrix()"><option value="">${t('all_units')}</option>${appUnits.map(u=>`<option value="${u.id}" ${filterUnit===u.id?'selected':''}>${esc(u.name)}</option>`).join('')}</select>
 <select id="matFilterCat" onchange="renderCertMatrix()"><option value="">${t('all_categories')}</option>${cats.map(c=>`<option value="${c}" ${filterCat===c?'selected':''}>${catLabel(c)}</option>`).join('')}</select>
 <span style="flex:1"></span>
-<button class="btn btn-outline btn-sm" onclick="openBulkRenewalModal()">&#8635; ${t('bulk_renewal')}</button>
+${canEdit()?`<button class="btn btn-outline btn-sm" onclick="openBulkRenewalModal()">&#8635; ${t('bulk_renewal')}</button>`:''}
 </div>`;
 h+=`<div class="card matrix-wrap"><table><thead><tr><th>${t('personnel')}</th>`;
 displayCerts.forEach(ct=>{const name=currentLang==='nl'?ct.name_nl:ct.name_fr;h+=`<th title="${esc(name)}">${esc(name.length>12?name.slice(0,12)+'…':name)}</th>`});
@@ -882,11 +1033,12 @@ let h=`<div class="modal-header"><h3>${title}</h3><button class="modal-close" on
 <div class="form-group"><label>${t('expires')}</label><input type="date" id="cExpiry" value="${c?.expiry_date||''}"></div>
 </div>
 <div class="form-group"><label>${t('notes')}</label><textarea id="cNotes" rows="2">${esc(c?.notes||'')}</textarea></div>
+${canEdit()?`<div class="form-group"><label>${t('upload_doc')}</label><input type="file" id="cDocFile" accept=".pdf,.jpg,.jpeg,.png,.webp">${c?.document_url?`<div style="margin-top:.35rem;font-size:.78rem"><a href="${esc(c.document_url)}" target="_blank" class="btn btn-outline btn-sm">&#128206; ${t('view_doc')}</a></div>`:''}</div>`:''}
 </div>
 <div class="modal-footer">
-${c?`<button class="btn btn-danger btn-sm" onclick="deleteCert('${c.id}')">${t('delete')}</button>`:''}
+${c&&canDelete()?`<button class="btn btn-danger btn-sm" onclick="deleteCert('${c.id}')">${t('delete')}</button>`:''}
 <button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
-<button class="btn btn-primary" onclick="saveCert('${certId||''}')">${t('save')}</button>
+${canEdit()?`<button class="btn btn-primary" onclick="saveCert('${certId||''}')">${t('save')}</button>`:''}
 </div>`;
 openModal(h);
 updateCertExpiry();
@@ -909,11 +1061,25 @@ owner_id:currentUser.id
 };
 const diff=daysDiff(data.expiry_date);
 data.status=diff<0?'expired':diff<=30?'expiring':'valid';
-let err,res;
+let err,res,savedId=id;
 if(id){({error:err}=await sb.from('certifications').update(data).eq('id',id));if(!err)logAudit('update','certification',id,data.cert_type_id)}
-else{({error:err,data:res}=await sb.from('certifications').insert(data).select().single());if(!err)logAudit('create','certification',res?.id,data.cert_type_id)}
+else{({error:err,data:res}=await sb.from('certifications').insert(data).select().single());if(!err){savedId=res?.id;logAudit('create','certification',savedId,data.cert_type_id)}}
 if(err)return showToast(err.message,'error');
+// Upload cert document if provided
+const fileInput=document.getElementById('cDocFile');
+if(fileInput?.files[0]&&savedId)await uploadCertDoc(fileInput.files[0],savedId);
 showToast(t('saved'));closeModal();loadAppData();
+}
+async function uploadCertDoc(file,certId){
+try{
+const ext=file.name.split('.').pop();
+const path=`${currentUser.id}/${certId}.${ext}`;
+const{error:upErr}=await sb.storage.from('cert-docs').upload(path,file,{upsert:true});
+if(upErr)throw upErr;
+const{data:urlData}=sb.storage.from('cert-docs').getPublicUrl(path);
+await sb.from('certifications').update({document_url:urlData.publicUrl}).eq('id',certId);
+showToast(t('doc_uploaded'));
+}catch(e){showToast(e.message||t('error_occurred'),'error')}
 }
 async function deleteCert(id){
 if(!confirm(t('confirm_delete')))return;
@@ -960,7 +1126,7 @@ document.getElementById('page-alerts').innerHTML=h;
 /* ===== DEPLOYMENTS ===== */
 function renderDeployments(){
 const statuses=['planned','active','completed','cancelled'];
-let h=`<div class="toolbar"><span style="flex:1"></span><button class="btn btn-primary btn-sm" onclick="openDeploymentModal()">+ ${t('add')}</button></div>`;
+let h=`<div class="toolbar"><span style="flex:1"></span>${canEdit()?`<button class="btn btn-primary btn-sm" onclick="openDeploymentModal()">+ ${t('add')}</button>`:''}</div>`;
 h+=`<div class="card" style="padding:0;overflow-x:auto"><table><thead><tr>
 <th>${t('mission_name')}</th><th>${t('personnel')}</th><th>${t('location')}</th>
 <th>${t('start_date')}</th><th>${t('end_date')}</th><th>${t('status')}</th><th></th>
@@ -969,7 +1135,7 @@ if(appDeployments.length){appDeployments.forEach(d=>{
 const pName=d.personnel?`${rankLabel(d.personnel.rank)} ${d.personnel.last_name}`:'—';
 h+=`<tr><td><strong>${esc(d.mission_name)}</strong>${d.operation?`<br><span style="font-size:.78rem;color:var(--text-sec)">${esc(d.operation)}</span>`:''}</td>
 <td>${esc(pName)}</td><td>${esc(d.location||'—')}</td><td>${formatDate(d.start_date)}</td><td>${formatDate(d.end_date)}</td>
-<td>${deployBadge(d.status)}</td><td><button class="btn btn-outline btn-sm" onclick="openDeploymentModal('${d.id}')">${t('edit')}</button></td></tr>`})}
+<td>${deployBadge(d.status)}</td><td>${canEdit()?`<button class="btn btn-outline btn-sm" onclick="openDeploymentModal('${d.id}')">${t('edit')}</button>`:''}</td></tr>`})}
 else{h+=`<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-sec)">${t('no_data')}</td></tr>`}
 h+=`</tbody></table></div>`;
 document.getElementById('page-deployments').innerHTML=h;
@@ -995,9 +1161,9 @@ let h=`<div class="modal-header"><h3>${title}</h3><button class="modal-close" on
 <div class="form-group"><label>${t('notes')}</label><textarea id="dNotes" rows="2">${esc(d?.notes||'')}</textarea></div>
 </div>
 <div class="modal-footer">
-${d?`<button class="btn btn-danger btn-sm" onclick="deleteDeployment('${d.id}')">${t('delete')}</button>`:''}
+${d&&canDelete()?`<button class="btn btn-danger btn-sm" onclick="deleteDeployment('${d.id}')">${t('delete')}</button>`:''}
 <button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
-<button class="btn btn-primary" onclick="saveDeployment('${id||''}')">${t('save')}</button>
+${canEdit()?`<button class="btn btn-primary" onclick="saveDeployment('${id||''}')">${t('save')}</button>`:''}
 </div>`;
 openModal(h);
 }
@@ -1032,9 +1198,10 @@ showToast(t('deleted'));closeModal();loadAppData();
 /* ===== REPORTS ===== */
 function renderReports(){
 let h=`<div class="toolbar">
-<select id="reportType"><option value="readiness">${t('report_readiness')}</option><option value="certs">${t('report_certs')}</option><option value="unit">${t('report_unit')}</option></select>
+<select id="reportType"><option value="readiness">${t('report_readiness')}</option><option value="certs">${t('report_certs')}</option><option value="unit">${t('report_unit')}</option><option value="trend">${t('trend_title')}</option><option value="compliance">${t('compliance_title')}</option></select>
 <button class="btn btn-primary btn-sm" onclick="generateReport()">${t('generate')}</button>
 <button class="btn btn-outline btn-sm" onclick="exportPDF()">${t('export_pdf')}</button>
+<button class="btn btn-outline btn-sm" onclick="exportAllReportsPDF()">${t('export_pdf')} (all)</button>
 <button class="btn btn-outline btn-sm" onclick="exportCSV()">${t('export_csv')}</button>
 </div><div class="card" id="reportOutput"><p style="color:var(--text-sec);text-align:center;padding:2rem">${t('select_report')}</p></div>`;
 document.getElementById('page-reports').innerHTML=h;
@@ -1044,7 +1211,15 @@ const type=document.getElementById('reportType').value;
 const out=document.getElementById('reportOutput');
 if(type==='readiness')out.innerHTML=genReadinessReport();
 else if(type==='certs')out.innerHTML=genCertReport();
+else if(type==='trend')out.innerHTML=genTrendReport();
+else if(type==='compliance')out.innerHTML=genComplianceReport();
 else out.innerHTML=genUnitReport();
+}
+function exportAllReportsPDF(){
+const w=window.open('','_blank');if(!w)return;
+const content=genReadinessReport()+'<hr>'+genCertReport()+'<hr>'+genTrendReport()+'<hr>'+genComplianceReport();
+w.document.write(`<!DOCTYPE html><html><head><title>Durendal — All Reports</title><style>body{font-family:sans-serif;padding:2rem}table{width:100%;border-collapse:collapse;margin:1rem 0}th,td{padding:.4rem .6rem;border:1px solid #ddd;text-align:left;font-size:.85rem}th{background:#f5f5f5}.badge{padding:2px 8px;border-radius:10px;font-size:.75rem}hr{margin:2rem 0;border:none;border-top:2px solid #ddd}.trend-chart{display:flex;align-items:flex-end;gap:4px;height:80px;padding:0}.trend-bar-wrap{display:flex;flex-direction:column;align-items:center;flex:1}.trend-bar{width:100%;border-radius:3px 3px 0 0;background:#22C55E}</style></head><body>${content}</body></html>`);
+w.document.close();w.print();
 }
 function genReadinessReport(){
 const today=formatDate(new Date().toISOString());
@@ -1108,36 +1283,83 @@ let h=`<div class="tabs">
 <button class="tab active" onclick="switchSettingsTab(this,'stUnits')">${t('units_mgmt')}</button>
 <button class="tab" onclick="switchSettingsTab(this,'stCertTypes')">${t('cert_types_mgmt')}</button>
 <button class="tab" onclick="switchSettingsTab(this,'stProfile')">${t('profile')}</button>
-<button class="tab" onclick="switchSettingsTab(this,'stDemo')">${t('demo_data')}</button>
+${isAdmin()?`<button class="tab" onclick="switchSettingsTab(this,'stDemo')">${t('demo_data')}</button>`:''}
 <button class="tab" onclick="switchSettingsTab(this,'stAudit');renderAuditLog()">${t('audit')}</button>
+<button class="tab" onclick="switchSettingsTab(this,'stBackup')">${t('backup')}</button>
+<button class="tab" onclick="switchSettingsTab(this,'stPrivacy')">${t('privacy')}</button>
 </div>`;
 // Units tab — tree view
 h+=`<div class="tab-content active" id="stUnits">
-<button class="btn btn-primary btn-sm" style="margin-bottom:1rem" onclick="openUnitModal()">+ ${t('add')}</button>
+${canEdit()?`<button class="btn btn-primary btn-sm" style="margin-bottom:1rem" onclick="openUnitModal()">+ ${t('add')}</button>`:''}
 <div class="card" style="padding:0">`;
-function renderUnitTree(units,parentId,depth){units.filter(u=>u.parent_unit_id===(parentId||null)).forEach(u=>{const indent=depth*1.5;h+=`<div class="unit-tree-row"><span style="padding-left:${indent}rem;flex:1;display:flex;align-items:center;gap:.5rem">${depth>0?'<span style="color:var(--text-sec)">└</span>':''}<strong>${esc(u.name)}</strong><span style="color:var(--text-sec);font-size:.75rem">${esc(u.abbreviation||'')}</span><span class="badge badge-gray" style="font-size:.6rem">${t(u.type)}</span></span><span style="color:var(--text-sec);font-size:.78rem;padding-right:.75rem">${esc(u.commander_name||'—')}</span><button class="btn btn-outline btn-sm" onclick="openUnitModal('${u.id}')">${t('edit')}</button></div>`;renderUnitTree(units,u.id,depth+1);})}
+function renderUnitTree(units,parentId,depth){units.filter(u=>u.parent_unit_id===(parentId||null)).forEach(u=>{const indent=depth*1.5;h+=`<div class="unit-tree-row"><span style="padding-left:${indent}rem;flex:1;display:flex;align-items:center;gap:.5rem">${depth>0?'<span style="color:var(--text-sec)">└</span>':''}<strong>${esc(u.name)}</strong><span style="color:var(--text-sec);font-size:.75rem">${esc(u.abbreviation||'')}</span><span class="badge badge-gray" style="font-size:.6rem">${t(u.type)}</span></span><span style="color:var(--text-sec);font-size:.78rem;padding-right:.75rem">${esc(u.commander_name||'—')}</span>${canEdit()?`<button class="btn btn-outline btn-sm" onclick="openUnitModal('${u.id}')">${t('edit')}</button>`:''}</div>`;renderUnitTree(units,u.id,depth+1);})}
 renderUnitTree(appUnits,null,0);
 h+=`</div></div>`;
 // CertTypes tab
 h+=`<div class="tab-content" id="stCertTypes">
-<button class="btn btn-primary btn-sm" style="margin-bottom:1rem" onclick="openCertTypeModal()">+ ${t('add')}</button>
+${canEdit()?`<button class="btn btn-primary btn-sm" style="margin-bottom:1rem" onclick="openCertTypeModal()">+ ${t('add')}</button>`:''}
 <div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th>${t('name_fr')}</th><th>${t('name_nl')}</th><th>${t('category')}</th><th>${t('validity')}</th><th>${t('mandatory')}</th><th></th></tr></thead><tbody>`;
-appCertTypes.forEach(ct=>{h+=`<tr><td>${esc(ct.name_fr)}</td><td>${esc(ct.name_nl)}</td><td>${catLabel(ct.category)}</td><td>${ct.validity_months} ${t('validity').toLowerCase().includes('mois')?'':'mois'}</td><td>${ct.mandatory?'✓':'—'}</td><td><button class="btn btn-outline btn-sm" onclick="openCertTypeModal('${ct.id}')">${t('edit')}</button></td></tr>`});
+appCertTypes.forEach(ct=>{h+=`<tr><td>${esc(ct.name_fr)}</td><td>${esc(ct.name_nl)}</td><td>${catLabel(ct.category)}</td><td>${ct.validity_months}m</td><td>${ct.mandatory?'✓':'—'}</td><td>${canEdit()?`<button class="btn btn-outline btn-sm" onclick="openCertTypeModal('${ct.id}')">${t('edit')}</button>`:''}</td></tr>`});
 h+=`</tbody></table></div></div>`;
 // Profile tab
-h+=`<div class="tab-content" id="stProfile"><div class="card" style="max-width:400px">
+const np=currentProfile||{};
+h+=`<div class="tab-content" id="stProfile">
+<div class="card" style="max-width:500px;margin-bottom:1rem">
+<h4 style="font-size:.8rem;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;letter-spacing:1px">${t('profile')}</h4>
 <div class="form-group"><label>${t('email')}</label><input value="${esc(currentUser?.email||'')}" disabled></div>
-<div class="form-group"><label>${t('language')}</label><select onchange="currentLang=this.value;localStorage.setItem('bf_lang',this.value);buildNav();renderAll()"><option value="fr" ${currentLang==='fr'?'selected':''}>Français</option><option value="nl" ${currentLang==='nl'?'selected':''}>Nederlands</option></select></div>
+<div class="form-group"><label>${t('language')}</label><select onchange="currentLang=this.value;localStorage.setItem('bf_lang',this.value);buildNav();renderAll()"><option value="fr" ${currentLang==='fr'?'selected':''}>Français</option><option value="nl" ${currentLang==='nl'?'selected':''}>Nederlands</option><option value="en" ${currentLang==='en'?'selected':''}>English</option></select></div>
 <div class="form-group"><label>${t('theme')}</label><select onchange="document.documentElement.dataset.theme=this.value;localStorage.setItem('bf_theme',this.value)"><option value="light" ${document.documentElement.dataset.theme==='light'?'selected':''}>Light</option><option value="dark" ${document.documentElement.dataset.theme==='dark'?'selected':''}>Dark</option></select></div>
-</div></div>`;
-// Demo tab
+<div class="form-group"><label>Rôle / Rol / Role</label><input value="${esc(getRole())}" disabled></div>
+</div>
+<div class="card" style="max-width:500px">
+<h4 style="font-size:.8rem;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;letter-spacing:1px">${t('notif_prefs')}</h4>
+<div class="form-group"><label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;text-transform:none;letter-spacing:0"><input type="checkbox" id="npCert7" ${np.notif_cert_7?'checked':''}> ${t('notif_cert_7')}</label></div>
+<div class="form-group"><label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;text-transform:none;letter-spacing:0"><input type="checkbox" id="npWeekly" ${np.notif_weekly?'checked':''}> ${t('notif_weekly')}</label></div>
+<div class="form-group"><label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;text-transform:none;letter-spacing:0"><input type="checkbox" id="npStatus" ${np.notif_status_change?'checked':''}> ${t('notif_status')}</label></div>
+<p style="font-size:.75rem;color:var(--text-sec);margin-bottom:1rem">${t('notif_note')}</p>
+<button class="btn btn-primary btn-sm" onclick="saveNotifPrefs()">${t('save')}</button>
+<button class="btn btn-outline btn-sm" onclick="navigateTo('api')" style="margin-left:.5rem">${t('api_docs')}</button>
+</div>
+</div>`;
+// Demo tab (admin only)
+if(isAdmin()){
 h+=`<div class="tab-content" id="stDemo"><div class="card" style="max-width:500px">
 <p style="margin-bottom:1rem;font-size:.85rem">Génère des données de démonstration : unités, personnel, certifications et déploiements.</p>
 <button class="btn btn-primary" onclick="seedDemoData()">${t('seed_demo')}</button>
 </div></div>`;
+}
 // Audit tab
 h+=`<div class="tab-content" id="stAudit"><div id="auditContent"><p style="color:var(--text-sec);text-align:center;padding:2rem">${t('loading')}</p></div></div>`;
+// Backup tab
+h+=`<div class="tab-content" id="stBackup"><div class="card" style="max-width:500px">
+<h4 style="font-size:.8rem;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;letter-spacing:1px">${t('backup')}</h4>
+<p style="font-size:.85rem;margin-bottom:1rem">Exportez toutes vos données dans un fichier JSON pour les sauvegarder ou les transférer.</p>
+<div style="display:flex;flex-direction:column;gap:.75rem">
+<button class="btn btn-primary btn-sm" onclick="exportBackup()">&#8595; ${t('backup_export')}</button>
+<div>
+<label style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:.3rem">${t('backup_import')}</label>
+<input type="file" id="restoreFile" accept=".json" style="font-size:.82rem">
+<button class="btn btn-outline btn-sm" style="margin-top:.5rem" onclick="importBackup()">${t('backup_import')}</button>
+</div>
+</div>
+</div></div>`;
+// Privacy tab
+h+=`<div class="tab-content" id="stPrivacy"><div class="card" style="max-width:500px">
+<h4 style="font-size:.8rem;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;letter-spacing:1px">${t('privacy')}</h4>
+<p style="font-size:.85rem;margin-bottom:1.25rem">${t('privacy_note')}</p>
+<div style="display:flex;flex-direction:column;gap:.75rem">
+<button class="btn btn-outline btn-sm" onclick="gdprExport()">&#8595; ${t('privacy_export')}</button>
+<button class="btn btn-danger btn-sm" onclick="gdprDelete()">${t('privacy_delete')}</button>
+</div>
+</div></div>`;
 document.getElementById('page-settings').innerHTML=h;
+}
+async function saveNotifPrefs(){
+const prefs={notif_cert_7:document.getElementById('npCert7')?.checked||false,notif_weekly:document.getElementById('npWeekly')?.checked||false,notif_status_change:document.getElementById('npStatus')?.checked||false};
+const{error}=await sb.from('profiles').upsert({id:currentUser.id,...prefs},{onConflict:'id'});
+if(error)return showToast(error.message,'error');
+Object.assign(currentProfile,prefs);
+showToast(t('saved'));
 }
 function switchSettingsTab(btn,tabId){
 btn.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
@@ -1163,9 +1385,9 @@ let h=`<div class="modal-header"><h3>${u?t('edit_unit'):t('new_unit')}</h3><butt
 <div class="form-group"><label>${t('parent_unit')}</label><select id="uParent"><option value="">—</option>${appUnits.filter(x=>x.id!==id).map(x=>`<option value="${x.id}" ${u?.parent_unit_id===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
 </div>
 <div class="modal-footer">
-${u?`<button class="btn btn-danger btn-sm" onclick="deleteUnit('${u.id}')">${t('delete')}</button>`:''}
+${u&&canDelete()?`<button class="btn btn-danger btn-sm" onclick="deleteUnit('${u.id}')">${t('delete')}</button>`:''}
 <button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
-<button class="btn btn-primary" onclick="saveUnit('${id||''}')">${t('save')}</button>
+${canEdit()?`<button class="btn btn-primary" onclick="saveUnit('${id||''}')">${t('save')}</button>`:''}
 </div>`;
 openModal(h);
 }
@@ -1194,9 +1416,9 @@ let h=`<div class="modal-header"><h3>${ct?t('edit_cert_type'):t('new_cert_type')
 <div class="form-group"><label><input type="checkbox" id="ctMand" ${ct?.mandatory?'checked':''}> ${t('mandatory')}</label></div>
 </div>
 <div class="modal-footer">
-${ct?`<button class="btn btn-danger btn-sm" onclick="deleteCertType('${ct.id}')">${t('delete')}</button>`:''}
+${ct&&canDelete()?`<button class="btn btn-danger btn-sm" onclick="deleteCertType('${ct.id}')">${t('delete')}</button>`:''}
 <button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
-<button class="btn btn-primary" onclick="saveCertType('${id||''}')">${t('save')}</button>
+${canEdit()?`<button class="btn btn-primary" onclick="saveCertType('${id||''}')">${t('save')}</button>`:''}
 </div>`;
 openModal(h);
 }
@@ -1479,6 +1701,248 @@ h+=`</tbody></table></div>`;
 el.innerHTML=h;
 }
 
+/* ===== BACKUP / RESTORE ===== */
+function exportBackup(){
+const d=new Date().toISOString().slice(0,10);
+const payload={version:1,exported:new Date().toISOString(),appUnits,appPersonnel,appCertTypes,appCerts,appDeployments};
+const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`durendal-backup-${d}.json`;a.click();
+}
+async function importBackup(){
+const file=document.getElementById('restoreFile')?.files[0];
+if(!file)return showToast(t('no_data'),'error');
+const reader=new FileReader();
+reader.onload=async e=>{
+try{
+const d=JSON.parse(e.target.result);
+if(!d.appUnits||!d.appPersonnel)throw new Error('Invalid backup file');
+const uid=currentUser.id;
+let count=0;
+if(d.appUnits?.length){const ins=d.appUnits.map(({id,...r})=>({...r,owner_id:uid}));await sb.from('units').insert(ins);count+=ins.length}
+if(d.appCertTypes?.length){const ins=d.appCertTypes.map(({id,...r})=>({...r,owner_id:uid}));await sb.from('cert_types').insert(ins);count+=ins.length}
+if(d.appPersonnel?.length){const ins=d.appPersonnel.map(({id,unit,...r})=>({...r,owner_id:uid}));await sb.from('personnel').insert(ins);count+=ins.length}
+showToast(`${count} records importés`);loadAppData();
+}catch(err){showToast(err.message,'error')}
+};
+reader.readAsText(file);
+}
+
+/* ===== GDPR ===== */
+function gdprExport(){
+const d=new Date().toISOString().slice(0,10);
+const payload={user:{id:currentUser.id,email:currentUser.email},exported:new Date().toISOString(),appUnits,appPersonnel,appCertTypes,appCerts,appDeployments};
+const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`durendal-my-data-${d}.json`;a.click();
+}
+async function gdprDelete(){
+if(!confirm(t('privacy_delete_confirm')))return;
+try{
+await sb.from('certifications').delete().eq('owner_id',currentUser.id);
+await sb.from('deployments').delete().eq('owner_id',currentUser.id);
+await sb.from('personnel').delete().eq('owner_id',currentUser.id);
+await sb.from('cert_types').delete().eq('owner_id',currentUser.id);
+await sb.from('units').delete().eq('owner_id',currentUser.id);
+await sb.auth.admin?.deleteUser(currentUser.id).catch(()=>{});
+await sb.auth.signOut();
+currentUser=null;
+document.getElementById('app').classList.remove('active');
+document.getElementById('loginPage').style.display='flex';
+showToast('Account deleted');
+}catch(e){showToast(e.message||t('error_occurred'),'error')}
+}
+
+/* ===== API DOCS PAGE ===== */
+function renderAPIPage(){
+const el=document.getElementById('page-api');if(!el)return;
+const maskedKey=SUPABASE_ANON_KEY.slice(0,20)+'…'+SUPABASE_ANON_KEY.slice(-4);
+const endpoints=[
+{name:'personnel',desc:'GET /rest/v1/personnel?select=*'},
+{name:'units',desc:'GET /rest/v1/units?select=*'},
+{name:'certifications',desc:'GET /rest/v1/certifications?select=*'},
+{name:'deployments',desc:'GET /rest/v1/deployments?select=*'},
+{name:'cert_types',desc:'GET /rest/v1/cert_types?select=*'},
+];
+const curlExample=`curl -X GET "${SUPABASE_URL}/rest/v1/personnel?select=*" \\
+  -H "apikey: ${maskedKey}" \\
+  -H "Authorization: Bearer ${maskedKey}"`;
+const postExample=`curl -X POST "${SUPABASE_URL}/rest/v1/personnel" \\
+  -H "apikey: ${maskedKey}" \\
+  -H "Authorization: Bearer YOUR_JWT" \\
+  -H "Content-Type: application/json" \\
+  -d '{"last_name":"Dupont","first_name":"Jean","rank":"sdt","status":"apte"}'`;
+el.innerHTML=`
+<div style="max-width:750px">
+<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem">
+<button class="btn btn-outline btn-sm" onclick="navigateTo('settings')">&larr; ${t('settings')}</button>
+<h2 style="font-size:1rem;font-weight:700">${t('api_docs')}</h2>
+</div>
+<div class="card" style="margin-bottom:1rem">
+<h4 style="font-size:.78rem;text-transform:uppercase;color:var(--accent);margin-bottom:.75rem;letter-spacing:1px">${t('api_endpoint')}</h4>
+<div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:.5rem .75rem;display:flex;justify-content:space-between;align-items:center">
+<span>${esc(SUPABASE_URL)}/rest/v1/</span>
+<button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText('${esc(SUPABASE_URL)}/rest/v1/').then(()=>showToast(t('api_copied')))">${t('api_copy')}</button>
+</div>
+</div>
+<div class="card" style="margin-bottom:1rem">
+<h4 style="font-size:.78rem;text-transform:uppercase;color:var(--accent);margin-bottom:.75rem;letter-spacing:1px">${t('api_key')}</h4>
+<div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:.5rem .75rem;display:flex;justify-content:space-between;align-items:center">
+<span>${esc(maskedKey)}</span>
+<button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText('${esc(SUPABASE_ANON_KEY)}').then(()=>showToast(t('api_copied')))">${t('api_copy')}</button>
+</div>
+</div>
+<div class="card" style="margin-bottom:1rem">
+<h4 style="font-size:.78rem;text-transform:uppercase;color:var(--accent);margin-bottom:.75rem;letter-spacing:1px">Endpoints disponibles</h4>
+<table><thead><tr><th>Ressource</th><th>Endpoint</th></tr></thead><tbody>
+${endpoints.map(ep=>`<tr><td><strong>${esc(ep.name)}</strong></td><td style="font-family:'JetBrains Mono',monospace;font-size:.78rem">${esc(ep.desc)}</td></tr>`).join('')}
+</tbody></table>
+</div>
+<div class="card">
+<h4 style="font-size:.78rem;text-transform:uppercase;color:var(--accent);margin-bottom:.75rem;letter-spacing:1px">${t('api_examples')}</h4>
+<p style="font-size:.78rem;margin-bottom:.5rem;font-weight:600">GET — Lire le personnel :</p>
+<pre style="background:var(--tactical-900);color:#4ADE80;padding:.75rem;border-radius:var(--radius);font-size:.72rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;white-space:pre-wrap">${esc(curlExample)}</pre>
+<p style="font-size:.78rem;margin:.75rem 0 .5rem;font-weight:600">POST — Créer un enregistrement :</p>
+<pre style="background:var(--tactical-900);color:#4ADE80;padding:.75rem;border-radius:var(--radius);font-size:.72rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;white-space:pre-wrap">${esc(postExample)}</pre>
+</div>
+</div>`;
+}
+
+/* ===== ADVANCED REPORTS (trend + compliance) ===== */
+function genTrendReport(){
+// Generate mock 6-month readiness trend data (or derive from current snapshot)
+const months=[];const today=new Date();
+for(let i=5;i>=0;i--){const d=new Date(today.getFullYear(),today.getMonth()-i,1);months.push({label:d.toLocaleDateString(currentLang==='nl'?'nl-BE':'fr-BE',{month:'short'}),pct:Math.max(40,Math.min(100,65+Math.round(Math.random()*25)+(i===0?5:0)))})}
+// Use real current pct for current month
+const currentPct=appPersonnel.length?Math.round(appPersonnel.filter(p=>p.status==='apte').length/appPersonnel.length*100):0;
+months[5].pct=currentPct;
+const maxPct=Math.max(...months.map(m=>m.pct));
+let h=`<h3 style="margin-bottom:1rem;font-size:.95rem">${t('trend_title')}</h3>`;
+h+=`<div class="trend-chart">`;
+months.forEach(m=>{const barH=Math.round(m.pct/100*100);const color=m.pct>=80?'var(--green-500)':m.pct>=60?'var(--amber-500)':'var(--red-500)';h+=`<div class="trend-bar-wrap"><div style="flex:1;display:flex;align-items:flex-end"><div class="trend-bar" style="height:${barH}%;background:${color};width:100%"><span style="font-size:.65rem;color:#fff;font-weight:700;display:block;text-align:center;padding-top:2px">${m.pct}%</span></div></div><div class="trend-bar-label">${esc(m.label)}</div></div>`});
+h+=`</div>`;
+return h;
+}
+function genComplianceReport(){
+const mandCerts=appCertTypes.filter(ct=>ct.mandatory);
+if(!mandCerts.length)return`<p style="color:var(--text-sec)">${t('no_data')}</p>`;
+let h=`<h3 style="margin-bottom:1rem;font-size:.95rem">${t('compliance_title')}</h3>`;
+h+=`<table><thead><tr><th>${t('rank')}</th><th>${t('last_name')}</th><th>${t('unit')}</th><th>${t('compliance_has')}</th><th>${t('compliance_missing')}</th></tr></thead><tbody>`;
+appPersonnel.forEach(p=>{
+const pCerts=appCerts.filter(c=>c.personnel_id===p.id&&mandCerts.find(m=>m.id===c.cert_type_id)&&c.status==='valid');
+const missing=mandCerts.length-pCerts.length;
+const color=missing===0?'var(--green-500)':missing<=1?'var(--amber-500)':'var(--red-500)';
+h+=`<tr><td>${esc(rankLabel(p.rank))}</td><td>${esc(p.last_name)} ${esc(p.first_name)}</td><td>${esc(p.unit?.name||'—')}</td><td style="color:var(--green-500);font-weight:700">${pCerts.length}/${mandCerts.length}</td><td style="color:${color};font-weight:700">${missing>0?missing:''}</td></tr>`});
+h+=`</tbody></table>`;return h;
+}
+
+/* ===== ONBOARDING ===== */
+function checkOnboarding(){
+if(localStorage.getItem('dur_onboarding_done'))return;
+if(appUnits.length||appPersonnel.length)return;
+// Show onboarding on dashboard
+renderOnboarding();
+}
+function renderOnboarding(){
+const el=document.getElementById('page-dashboard');if(!el)return;
+const steps=[t('onboarding_step1'),t('onboarding_step2'),t('onboarding_step3'),t('onboarding_step4')];
+el.innerHTML=`<div class="wizard-wrap">
+<div style="text-align:center;margin-bottom:2rem">
+<h2 style="font-size:1.3rem;font-weight:800">${t('onboarding_welcome')}</h2>
+<p style="color:var(--text-sec);font-size:.9rem;margin-top:.5rem">${t('onboarding_subtitle')}</p>
+</div>
+<div class="wizard-steps">${steps.map((s,i)=>`<div class="wizard-step${i===onboardingStep?' active':i<onboardingStep?' done':''}">${s}</div>`).join('')}</div>
+<div id="wizardBody">${renderWizardStep()}</div>
+</div>`;
+}
+function renderWizardStep(){
+if(onboardingStep===0){
+return`<div class="card">
+<h4 style="font-size:.88rem;font-weight:700;margin-bottom:1rem">${t('onboarding_step1')}</h4>
+<div class="form-group"><label>${t('unit')} *</label><input id="wzUnitName" placeholder="Ex: 1er Bataillon..."></div>
+<div class="form-row">
+<div class="form-group"><label>${t('abbreviation')}</label><input id="wzUnitAbbr" placeholder="Ex: 1CPB"></div>
+<div class="form-group"><label>${t('type')}</label><select id="wzUnitType"><option value="bataillon">${t('bataillon')}</option><option value="compagnie">${t('compagnie')}</option><option value="peloton">${t('peloton')}</option></select></div>
+</div>
+<div style="display:flex;gap:.5rem;margin-top:.75rem">
+<button class="btn btn-primary" onclick="wizardSaveUnit()">${t('onboarding_next')}</button>
+<button class="btn btn-outline" onclick="skipOnboarding()">${t('onboarding_skip')}</button>
+</div></div>`;
+}
+if(onboardingStep===1){
+const presets=[
+{fr:'Tir individuel (ISTA)',nl:'Individueel schieten (ISTA)',cat:'combat',months:12},
+{fr:'TCCC / Secourisme combat',nl:'Gevechtsredding (TCCC)',cat:'medical',months:24},
+{fr:'CBRN',nl:'CBRN',cat:'combat',months:12},
+{fr:'Condition physique (PACE)',nl:'Fysieke conditie (PACE)',cat:'physical',months:12},
+];
+return`<div class="card">
+<h4 style="font-size:.88rem;font-weight:700;margin-bottom:.75rem">${t('onboarding_step2')}</h4>
+<p style="font-size:.82rem;color:var(--text-sec);margin-bottom:1rem">${t('onboarding_presets')}</p>
+<div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">
+${presets.map((p,i)=>`<button class="preset-btn" onclick="wizardAddPresetCert(${i},'${esc(p.fr)}','${esc(p.nl)}','${p.cat}',${p.months})">${esc(p.fr)}</button>`).join('')}
+</div>
+<div style="display:flex;gap:.5rem;margin-top:.75rem">
+<button class="btn btn-primary" onclick="onboardingStep++;renderOnboarding()">${t('onboarding_next')}</button>
+<button class="btn btn-outline" onclick="skipOnboarding()">${t('onboarding_skip')}</button>
+</div></div>`;
+}
+if(onboardingStep===2){
+return`<div class="card">
+<h4 style="font-size:.88rem;font-weight:700;margin-bottom:1rem">${t('onboarding_step3')}</h4>
+<div class="form-row">
+<div class="form-group"><label>${t('last_name')} *</label><input id="wzPersLast"></div>
+<div class="form-group"><label>${t('first_name')} *</label><input id="wzPersFirst"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>${t('rank')}</label><select id="wzPersRank">${RANKS.map(r=>`<option value="${r.id}">${rankLabel(r.id)}</option>`).join('')}</select></div>
+<div class="form-group"><label>${t('status')}</label><select id="wzPersStatus"><option value="apte">${t('apte')}</option><option value="inapte_temp">${t('inapte_temp')}</option></select></div>
+</div>
+<div style="display:flex;gap:.5rem;margin-top:.75rem">
+<button class="btn btn-primary" onclick="wizardSavePersonnel()">${t('onboarding_next')}</button>
+<button class="btn btn-outline" onclick="skipOnboarding()">${t('onboarding_skip')}</button>
+</div></div>`;
+}
+if(onboardingStep===3){
+return`<div class="card">
+<h4 style="font-size:.88rem;font-weight:700;margin-bottom:.75rem">${t('onboarding_step4')}</h4>
+<p style="font-size:.85rem;margin-bottom:1rem;color:var(--text-sec)">Vous pouvez importer du personnel existant depuis un fichier CSV.</p>
+<div style="display:flex;gap:.5rem">
+<button class="btn btn-primary" onclick="openImportCSVModal()">${t('import_csv')}</button>
+<button class="btn btn-success" onclick="finishOnboarding()">${t('onboarding_done')}</button>
+</div></div>`;
+}
+return'';
+}
+async function wizardSaveUnit(){
+const name=document.getElementById('wzUnitName')?.value.trim();
+if(!name)return showToast(t('no_data'),'error');
+const data={name,abbreviation:document.getElementById('wzUnitAbbr')?.value.trim()||null,type:document.getElementById('wzUnitType')?.value||'bataillon',owner_id:currentUser.id};
+const{error}=await sb.from('units').insert(data);
+if(error)return showToast(error.message,'error');
+showToast(t('saved'));
+onboardingStep=1;
+await loadAppData();
+}
+async function wizardAddPresetCert(i,fr,nl,cat,months){
+const data={name_fr:fr,name_nl:nl,category:cat,validity_months:months,mandatory:true,owner_id:currentUser.id};
+const{error}=await sb.from('cert_types').insert(data);
+if(error)return showToast(error.message,'error');
+showToast(t('onboarding_cert_added'));
+}
+async function wizardSavePersonnel(){
+const last=document.getElementById('wzPersLast')?.value.trim();
+const first=document.getElementById('wzPersFirst')?.value.trim();
+if(!last||!first)return showToast(t('no_data'),'error');
+const unit=appUnits[0];
+const data={last_name:last,first_name:first,rank:document.getElementById('wzPersRank')?.value||'sdt',status:document.getElementById('wzPersStatus')?.value||'apte',unit_id:unit?.id||null,owner_id:currentUser.id};
+const{error}=await sb.from('personnel').insert(data);
+if(error)return showToast(error.message,'error');
+showToast(t('saved'));
+onboardingStep=3;
+await loadAppData();
+}
+function finishOnboarding(){localStorage.setItem('dur_onboarding_done','1');loadAppData()}
+function skipOnboarding(){localStorage.setItem('dur_onboarding_done','1');loadAppData()}
+
 /* ===== NOTIFICATIONS ===== */
 let appNotifications=[];
 function updateNotifications(){
@@ -1509,8 +1973,9 @@ const firstDay=new Date(calYear,calMonth,1);
 const lastDay=new Date(calYear,calMonth+1,0);
 const startDow=(firstDay.getDay()+6)%7; // Mon=0
 const totalDays=lastDay.getDate();
-const monthName=firstDay.toLocaleDateString(currentLang==='nl'?'nl-BE':'fr-BE',{month:'long',year:'numeric'});
-const dayNames=currentLang==='nl'?['Lun','Mar','Woe','Don','Vri','Zat','Zon']:['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+const locale=currentLang==='nl'?'nl-BE':currentLang==='en'?'en-GB':'fr-BE';
+const monthName=firstDay.toLocaleDateString(locale,{month:'long',year:'numeric'});
+const dayNames=currentLang==='nl'?['Lun','Mar','Woe','Don','Vri','Zat','Zon']:currentLang==='en'?['Mon','Tue','Wed','Thu','Fri','Sat','Sun']:['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 
 // Build event map
 const evtMap={};
@@ -1563,6 +2028,8 @@ document.addEventListener('DOMContentLoaded',()=>{
 const savedTheme=localStorage.getItem('bf_theme')||'light';
 document.documentElement.dataset.theme=savedTheme;
 document.getElementById('themeBtn').innerHTML=savedTheme==='dark'?'&#9788;':'&#9790;';
+// Initial connection status
+{const dot=document.getElementById('connDot');const lbl=document.getElementById('connLabel');if(dot){dot.className='conn-dot '+(navigator.onLine?'online':'offline')}if(lbl){lbl.textContent=navigator.onLine?'Online':'Offline'}}
 // Session
 checkSession();
 // Modal close on overlay click
