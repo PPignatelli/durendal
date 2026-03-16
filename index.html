@@ -569,7 +569,7 @@ tak_note:'Configurez votre serveur TAK pour partager les données en temps réel
 air_quality:'Qualité de l\'air',live_intel:'Renseignement en direct',layers:'Couches',
 aircraft:'Aéronefs',satellites:'Satellites',earthquakes:'Séismes',active_fires:'Feux actifs',
 ships:'Navires',radar:'Radar météo',total_tracks:'Pistes totales',
-trains:'Trains',helicopters:'Hélicoptères',drones:'Drones',heavy_aircraft:'Gros porteurs',light_aircraft:'Aviation légère',glider:'Planeur',
+trains:'Trains',helicopters:'Hélicoptères',drones:'Drones',heavy_aircraft:'Gros porteurs',light_aircraft:'Aviation légère',glider:'Planeur',sat_count:'satellites suivis',
 ops:'Opérations',sitrep:'SITREP',contact_report:'CONTACT',medevac:'MEDEVAC',spotrep:'SPOTREP',
 measure:'Mesurer',clear:'Effacer',alert_state:'État d\'alerte',zulu_time:'Heure Zulu',copy_clipboard:'Copier'
 },nl:{
@@ -655,7 +655,7 @@ tak_note:'Configureer uw TAK-server om realtime gegevens te delen met ATAK/iTAK.
 air_quality:'Luchtkwaliteit',live_intel:'Live inlichtingen',layers:'Lagen',
 aircraft:'Vliegtuigen',satellites:'Satellieten',earthquakes:'Aardbevingen',active_fires:'Actieve branden',
 ships:'Schepen',radar:'Weerradar',total_tracks:'Totaal tracks',
-trains:'Treinen',helicopters:'Helikopters',drones:'Drones',heavy_aircraft:'Groot vliegtuig',light_aircraft:'Lichte luchtvaart',glider:'Zweefvliegtuig',
+trains:'Treinen',helicopters:'Helikopters',drones:'Drones',heavy_aircraft:'Groot vliegtuig',light_aircraft:'Lichte luchtvaart',glider:'Zweefvliegtuig',sat_count:'satellieten gevolgd',
 ops:'Operaties',sitrep:'SITREP',contact_report:'CONTACT',medevac:'MEDEVAC',spotrep:'SPOTREP',
 measure:'Meten',clear:'Wissen',alert_state:'Alarmstatus',zulu_time:'Zulu tijd',copy_clipboard:'Kopiëren'
 },en:{
@@ -741,7 +741,7 @@ tak_note:'Configure your TAK Server to share real-time data with ATAK/iTAK.',
 air_quality:'Air Quality',live_intel:'Live Intelligence',layers:'Layers',
 aircraft:'Aircraft',satellites:'Satellites',earthquakes:'Earthquakes',active_fires:'Active Fires',
 ships:'Ships',radar:'Weather Radar',total_tracks:'Total Tracks',
-trains:'Trains',helicopters:'Helicopters',drones:'Drones',heavy_aircraft:'Heavy Aircraft',light_aircraft:'Light Aircraft',glider:'Glider',
+trains:'Trains',helicopters:'Helicopters',drones:'Drones',heavy_aircraft:'Heavy Aircraft',light_aircraft:'Light Aircraft',glider:'Glider',sat_count:'satellites tracked',
 ops:'Operations',sitrep:'SITREP',contact_report:'CONTACT',medevac:'MEDEVAC',spotrep:'SPOTREP',
 measure:'Measure',clear:'Clear',alert_state:'Alert State',zulu_time:'Zulu Time',copy_clipboard:'Copy'
 }};
@@ -2365,16 +2365,16 @@ let mapIntervals=[];
 
 /* --- Satellite constellation tracker --- */
 const SAT_GROUPS=[
-  {name:'Starlink',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=json',color:'#60A5FA',icon:'·',max:200},
-  {name:'OneWeb',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=oneweb&FORMAT=json',color:'#34D399',icon:'·',max:50},
-  {name:'GPS',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=json',color:'#F59E0B',icon:'◆',max:50},
-  {name:'GLONASS',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=glo-ops&FORMAT=json',color:'#EF4444',icon:'◆',max:50},
-  {name:'Galileo',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=galileo&FORMAT=json',color:'#8B5CF6',icon:'◆',max:50},
-  {name:'Weather',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=weather&FORMAT=json',color:'#06B6D4',icon:'▲',max:30},
-  {name:'Science',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=science&FORMAT=json',color:'#EC4899',icon:'▲',max:30},
-  {name:'Military',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=military&FORMAT=json',color:'#FF1744',icon:'■',max:50},
-  {name:'Stations',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=json',color:'#FFD700',icon:'★',max:20},
-  {name:'Iridium',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-NEXT&FORMAT=json',color:'#A78BFA',icon:'·',max:50}
+  {name:'Starlink',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=tle',color:'#60A5FA',max:200},
+  {name:'OneWeb',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=oneweb&FORMAT=tle',color:'#34D399',max:50},
+  {name:'GPS',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=tle',color:'#F59E0B',max:50},
+  {name:'GLONASS',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=glo-ops&FORMAT=tle',color:'#EF4444',max:50},
+  {name:'Galileo',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=galileo&FORMAT=tle',color:'#8B5CF6',max:50},
+  {name:'Weather',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=weather&FORMAT=tle',color:'#06B6D4',max:30},
+  {name:'Science',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=science&FORMAT=tle',color:'#EC4899',max:30},
+  {name:'Military',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=military&FORMAT=tle',color:'#FF1744',max:50},
+  {name:'Stations',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle',color:'#FFD700',max:30},
+  {name:'Iridium',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-NEXT&FORMAT=tle',color:'#A78BFA',max:50}
 ];
 let satRecords=[];   // {name,satrec,group,color,icon,noradId,marker}
 let satLoaded=false;
@@ -2585,7 +2585,7 @@ loadSatelliteTLEs().then(()=>{
 });
 
 /* auto-refresh — fast intervals for smooth tracking */
-mapIntervals.push(setInterval(fetchAircraftLayer,10000));  // aircraft every 10s
+mapIntervals.push(setInterval(fetchAircraftLayer,15000));  // aircraft every 15s (OpenSky rate limit)
 mapIntervals.push(setInterval(fetchRadarLayer,120000));    // radar every 2min
 mapIntervals.push(setInterval(fetchAirQuality,300000));    // AQ every 5min
 mapIntervals.push(setInterval(fetchWeather,300000));       // weather every 5min
@@ -2640,7 +2640,13 @@ function getAircraftCatInfo(cat){return AIRCRAFT_CAT_INFO[cat]||AIRCRAFT_CAT_INF
 async function fetchAircraftLayer(){
 if(!igAircraft||!window.mapInstance)return;
 try{
-const r=await fetch('https://opensky-network.org/api/states/all?lamin=35&lomin=-15&lamax=60&lomax=40');
+// Use map bounds to only fetch visible area, clamped to reasonable size
+const b=window.mapInstance.getBounds();
+const lamin=Math.max(b.getSouth(),-90).toFixed(1);
+const lamax=Math.min(b.getNorth(),90).toFixed(1);
+const lomin=Math.max(b.getWest(),-180).toFixed(1);
+const lomax=Math.min(b.getEast(),180).toFixed(1);
+const r=await fetch(`https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`);
 if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
 if(!d.states){intelCounts.aircraft=0;updateIntelCounter();return;}
@@ -2702,21 +2708,34 @@ console.log('[AIR] '+validCount+' aircraft tracked over Europe');
 /* === Satellite Constellation Tracker (CelesTrak TLE + satellite.js SGP4) === */
 let issMarker=null,issTrailPositions=[],issTrailLine=null; // kept for backward compat refs in clearMapIntervals
 
+function parseTLEText(text){
+  const lines=text.trim().split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+  const sats=[];
+  for(let i=0;i<lines.length-2;i++){
+    if(lines[i+1]&&lines[i+1].startsWith('1 ')&&lines[i+2]&&lines[i+2].startsWith('2 ')){
+      sats.push({name:lines[i].trim(),line1:lines[i+1],line2:lines[i+2]});
+      i+=2;
+    }
+  }
+  return sats;
+}
+
 async function loadSatelliteTLEs(){
   if(satLoaded)return;
   satRecords=[];
-  console.log('[SAT] Loading TLEs from CelesTrak...');
+  console.log('[SAT] Loading TLEs from CelesTrak (TLE text format)...');
   const results=await Promise.allSettled(SAT_GROUPS.map(async group=>{
     const r=await fetch(group.url);
     if(!r.ok)throw new Error('HTTP '+r.status+' for '+group.name);
-    const data=await r.json();
+    const text=await r.text();
+    const tles=parseTLEText(text);
     let count=0;
-    data.slice(0,group.max).forEach(omm=>{
+    tles.slice(0,group.max).forEach(tle=>{
       try{
-        if(!omm.TLE_LINE1||!omm.TLE_LINE2)return;
-        const satrec=satellite.twoline2satrec(omm.TLE_LINE1,omm.TLE_LINE2);
+        const satrec=satellite.twoline2satrec(tle.line1,tle.line2);
         if(!satrec||satrec.error!==0)return;
-        satRecords.push({name:omm.OBJECT_NAME||'Unknown',noradId:omm.NORAD_CAT_ID,group:group.name,color:group.color,icon:group.icon,satrec:satrec,marker:null});
+        const noradId=parseInt(tle.line1.substring(2,7).trim());
+        satRecords.push({name:tle.name,noradId:noradId,group:group.name,color:group.color,satrec:satrec,marker:null});
         count++;
       }catch(e){}
     });
@@ -2727,8 +2746,8 @@ async function loadSatelliteTLEs(){
   satLoaded=true;
   intelCounts.satellites=satRecords.length;
   updateIntelCounter();
-  console.log('[SAT] Total: '+satRecords.length+' satellites ready for SGP4 propagation');
-  showToast(satRecords.length+' satellites tracked','info');
+  console.log('[SAT] TOTAL: '+satRecords.length+' satellites ready for SGP4 propagation');
+  showToast(satRecords.length+' '+t('sat_count'),'info');
 }
 
 function updateSatellitePositions(){
