@@ -301,7 +301,6 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 .milsym-icon{background:none!important;border:none!important}
 .aircraft-icon{background:none!important;border:none!important;transition:transform .3s linear}
 .satellite-icon{background:none!important;border:none!important}
-.leaflet-marker-icon{transition:transform 8s linear!important}
 .iss-trail{stroke:#8B5CF6;stroke-width:2;stroke-dasharray:6 4;fill:none;opacity:.6}
 .aircraft-trail{stroke:rgba(255,215,0,.3);stroke-width:1;fill:none}
 .pulse-dot{animation:pulse-ring 2s ease-out infinite}
@@ -524,7 +523,8 @@ sso_note:'Contactez votre administrateur IT pour configurer Microsoft Entra ID.'
 tak_note:'Configurez votre serveur TAK pour partager les données en temps réel avec ATAK/iTAK.',
 air_quality:'Qualité de l\'air',live_intel:'Renseignement en direct',layers:'Couches',
 aircraft:'Aéronefs',satellites:'Satellites',earthquakes:'Séismes',active_fires:'Feux actifs',
-ships:'Navires',radar:'Radar météo',total_tracks:'Pistes totales'
+ships:'Navires',radar:'Radar météo',total_tracks:'Pistes totales',
+trains:'Trains',helicopters:'Hélicoptères',drones:'Drones',heavy_aircraft:'Gros porteurs',light_aircraft:'Aviation légère',glider:'Planeur'
 },nl:{
 dashboard:'Dashboard',personnel:'Personeel',certifications:'Certificeringen',
 alerts:'Waarschuwingen',reports:'Rapporten',deployments:'Inzetten',settings:'Instellingen',
@@ -607,7 +607,8 @@ sso_note:'Neem contact op met uw IT-beheerder om Microsoft Entra ID te configure
 tak_note:'Configureer uw TAK-server om realtime gegevens te delen met ATAK/iTAK.',
 air_quality:'Luchtkwaliteit',live_intel:'Live inlichtingen',layers:'Lagen',
 aircraft:'Vliegtuigen',satellites:'Satellieten',earthquakes:'Aardbevingen',active_fires:'Actieve branden',
-ships:'Schepen',radar:'Weerradar',total_tracks:'Totaal tracks'
+ships:'Schepen',radar:'Weerradar',total_tracks:'Totaal tracks',
+trains:'Treinen',helicopters:'Helikopters',drones:'Drones',heavy_aircraft:'Groot vliegtuig',light_aircraft:'Lichte luchtvaart',glider:'Zweefvliegtuig'
 },en:{
 dashboard:'Dashboard',personnel:'Personnel',certifications:'Certifications',
 alerts:'Alerts',reports:'Reports',deployments:'Deployments',settings:'Settings',
@@ -690,7 +691,8 @@ sso_note:'Contact your IT administrator to configure Microsoft Entra ID.',
 tak_note:'Configure your TAK Server to share real-time data with ATAK/iTAK.',
 air_quality:'Air Quality',live_intel:'Live Intelligence',layers:'Layers',
 aircraft:'Aircraft',satellites:'Satellites',earthquakes:'Earthquakes',active_fires:'Active Fires',
-ships:'Ships',radar:'Weather Radar',total_tracks:'Total Tracks'
+ships:'Ships',radar:'Weather Radar',total_tracks:'Total Tracks',
+trains:'Trains',helicopters:'Helicopters',drones:'Drones',heavy_aircraft:'Heavy Aircraft',light_aircraft:'Light Aircraft',glider:'Glider'
 }};
 function t(k){return T[currentLang]?.[k]||T.fr[k]||k}
 function rankLabel(id){const r=RANKS.find(x=>x.id===id);return r?r[currentLang]||r.fr:id||''}
@@ -2304,12 +2306,12 @@ const DEPLOY_COORDS={
 };
 
 /* --- Intelligence layer groups (module-level) --- */
-let igAircraft=null,igSatellite=null,igEarthquakes=null,igFires=null,igShips=null,igUnits=null,igDeploy=null;
+let igAircraft=null,igSatellite=null,igEarthquakes=null,igFires=null,igShips=null,igUnits=null,igDeploy=null,igTrains=null;
 let igRadar=null;
-let intelCounts={aircraft:0,satellites:1,earthquakes:0,fires:0,ships:0,units:0,deployments:0};
+let intelCounts={aircraft:0,satellites:1,earthquakes:0,fires:0,ships:0,trains:0,units:0,deployments:0};
 let mapIntervals=[];
 
-function clearMapIntervals(){mapIntervals.forEach(id=>clearInterval(id));mapIntervals=[];aircraftMarkers={};issMarker=null;issTrailPositions=[];issTrailLine=null}
+function clearMapIntervals(){mapIntervals.forEach(id=>clearInterval(id));mapIntervals=[];aircraftMarkers={};issMarker=null;issTrailPositions=[];issTrailLine=null;igTrains=null}
 
 function renderMap(){
 const el=document.getElementById('page-map');if(!el)return;
@@ -2339,6 +2341,7 @@ el.innerHTML=`
     <div class="layer-panel">
       <h4>${t('layers')}</h4>
       <label><input type="checkbox" id="layerAircraft" checked> ✈️ ${t('aircraft')} (OpenSky)</label>
+      <label><input type="checkbox" id="layerTrains"> 🚆 ${t('trains')} (SNCB)</label>
       <label><input type="checkbox" id="layerSatellite" checked> 🛰️ ISS Satellite</label>
       <label><input type="checkbox" id="layerEarthquakes"> 🔴 ${t('earthquakes')} (USGS)</label>
       <label><input type="checkbox" id="layerFires"> 🔥 ${t('active_fires')} (NASA)</label>
@@ -2360,8 +2363,8 @@ el.innerHTML=`
 clearMapIntervals();
 
 if(window.mapInstance){window.mapInstance.remove();window.mapInstance=null}
-window.mapInstance=L.map('tacticalMap').setView([50.85,4.35],7);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors'}).addTo(window.mapInstance);
+window.mapInstance=L.map('tacticalMap',{worldCopyJump:true,minZoom:2,maxZoom:18}).setView([50.5,10],4);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors',noWrap:false}).addTo(window.mapInstance);
 
 /* --- init layer groups --- */
 igAircraft=L.layerGroup();
@@ -2369,6 +2372,7 @@ igSatellite=L.layerGroup();
 igEarthquakes=L.layerGroup();
 igFires=L.layerGroup();
 igShips=L.layerGroup();
+igTrains=L.layerGroup();
 igUnits=L.layerGroup();
 igDeploy=L.layerGroup();
 
@@ -2400,6 +2404,9 @@ igDeploy.addTo(window.mapInstance);
 /* --- layer toggle listeners --- */
 document.getElementById('layerAircraft')?.addEventListener('change',e=>{
 e.target.checked?igAircraft.addTo(window.mapInstance):window.mapInstance.removeLayer(igAircraft);
+});
+document.getElementById('layerTrains')?.addEventListener('change',e=>{
+e.target.checked?igTrains.addTo(window.mapInstance):window.mapInstance.removeLayer(igTrains);
 });
 document.getElementById('layerSatellite')?.addEventListener('change',e=>{
 e.target.checked?igSatellite.addTo(window.mapInstance):window.mapInstance.removeLayer(igSatellite);
@@ -2433,6 +2440,7 @@ fetchEarthquakesLayer();
 fetchFiresLayer();
 addShipsLayer();
 fetchRadarLayer();
+fetchTrainsLayer();
 updateIntelCounter();
 
 /* auto-refresh — fast intervals for smooth tracking */
@@ -2441,6 +2449,7 @@ mapIntervals.push(setInterval(fetchISSLayer,5000));        // ISS every 5s
 mapIntervals.push(setInterval(fetchRadarLayer,120000));    // radar every 2min
 mapIntervals.push(setInterval(fetchAirQuality,300000));    // AQ every 5min
 mapIntervals.push(setInterval(fetchWeather,300000));       // weather every 5min
+mapIntervals.push(setInterval(fetchTrainsLayer,60000));    // trains every 60s
 }
 
 /* === Intel counter === */
@@ -2450,6 +2459,7 @@ const total=Object.values(intelCounts).reduce((a,b)=>a+b,0);
 el.innerHTML=`
 <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);margin-bottom:.3rem;font-weight:700">${t('live_intel')}</div>
 <div class="ic-row"><span>✈️ ${t('aircraft')}</span><span class="ic-val">${intelCounts.aircraft}</span></div>
+<div class="ic-row"><span>🚆 ${t('trains')}</span><span class="ic-val">${intelCounts.trains}</span></div>
 <div class="ic-row"><span>🛰️ ${t('satellites')}</span><span class="ic-val">${intelCounts.satellites}</span></div>
 <div class="ic-row"><span>🔴 ${t('earthquakes')}</span><span class="ic-val">${intelCounts.earthquakes}</span></div>
 <div class="ic-row"><span>🔥 ${t('active_fires')}</span><span class="ic-val">${intelCounts.fires}</span></div>
@@ -2461,43 +2471,66 @@ el.innerHTML=`
 </div>`;
 }
 
-/* === Aircraft (OpenSky Network) — smooth animation + trails === */
-let aircraftMarkers={};  // icao -> {marker, trail, positions}
+/* === Aircraft (OpenSky Network) — smooth animation + trails, Europe-wide === */
+let aircraftMarkers={};  // icao -> {marker, trail, positions, cat}
+
+const AIRCRAFT_CAT_INFO={
+  0:{label:'Unknown',    color:'#FFD700',size:14,svg:'<svg viewBox="0 0 24 24" width="14" height="14"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700"/></svg>'},
+  1:{label:'Unknown',    color:'#FFD700',size:14,svg:'<svg viewBox="0 0 24 24" width="14" height="14"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700"/></svg>'},
+  2:{label:'Light',      color:'#FFD700',size:12,svg:'<svg viewBox="0 0 24 24" width="12" height="12"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700"/></svg>'},
+  3:{label:'Small',      color:'#FFD700',size:12,svg:'<svg viewBox="0 0 24 24" width="12" height="12"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700"/></svg>'},
+  4:{label:'Large',      color:'#FFD700',size:20,svg:'<svg viewBox="0 0 24 24" width="20" height="20"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700"/></svg>'},
+  5:{label:'High Vortex (B757)',color:'#FFD700',size:20,svg:'<svg viewBox="0 0 24 24" width="20" height="20"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700"/></svg>'},
+  6:{label:'Heavy',      color:'#FFD700',size:20,svg:'<svg viewBox="0 0 24 24" width="20" height="20"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700"/></svg>'},
+  7:{label:'High Performance',color:'#FFD700',size:14,svg:'<svg viewBox="0 0 24 24" width="14" height="14"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700"/></svg>'},
+  8:{label:'Helicopter',  color:'#00BCD4',size:16,svg:'<svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 4h18v2H3V4zm9 2v4H6l-2 8h2l1-4h5v5l2 3 2-3v-5h5l1 4h2l-2-8h-6V6h-4z" fill="#00BCD4"/></svg>'},
+  9:{label:'Glider',      color:'#9CA3AF',size:12,svg:'<svg viewBox="0 0 24 24" width="12" height="12"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#9CA3AF"/></svg>'},
+  10:{label:'Lighter-than-air',color:'#A78BFA',size:12,svg:'<svg viewBox="0 0 24 24" width="12" height="12"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#A78BFA"/></svg>'},
+  14:{label:'UAV/Drone',   color:'#FF1744',size:14,svg:'<svg viewBox="0 0 24 24" width="14" height="14"><circle cx="6" cy="6" r="3" fill="none" stroke="#FF1744" stroke-width="1.5"/><circle cx="18" cy="6" r="3" fill="none" stroke="#FF1744" stroke-width="1.5"/><circle cx="6" cy="18" r="3" fill="none" stroke="#FF1744" stroke-width="1.5"/><circle cx="18" cy="18" r="3" fill="none" stroke="#FF1744" stroke-width="1.5"/><rect x="8" y="8" width="8" height="8" rx="1" fill="#FF1744" opacity=".6"/></svg>'},
+  16:{label:'Emergency Vehicle',color:'#EF4444',size:14,svg:'<svg viewBox="0 0 24 24" width="14" height="14"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#EF4444"/></svg>'},
+  17:{label:'Service Vehicle',color:'#FB923C',size:14,svg:'<svg viewBox="0 0 24 24" width="14" height="14"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FB923C"/></svg>'}
+};
+
+function getAircraftCatInfo(cat){return AIRCRAFT_CAT_INFO[cat]||AIRCRAFT_CAT_INFO[0];}
+
 async function fetchAircraftLayer(){
 if(!igAircraft||!window.mapInstance)return;
 try{
-const r=await fetch('https://opensky-network.org/api/states/all?lamin=49.5&lomin=2.5&lamax=51.5&lomax=6.5');
+const r=await fetch('https://opensky-network.org/api/states/all?lamin=35&lomin=-15&lamax=60&lomax=40');
 if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
 if(!d.states){intelCounts.aircraft=0;updateIntelCounter();return;}
-intelCounts.aircraft=d.states.length;
 const seenIcaos=new Set();
+let validCount=0;
 d.states.forEach(s=>{
-const [icao,callsign,country,,, lon,lat,alt,,onGround,vel,heading]=s;
+const [icao,callsign,country,,, lon,lat,alt,,onGround,vel,heading,,,,, cat]=s;
 if(lat==null||lon==null)return;
+validCount++;
 seenIcaos.add(icao);
 const newPos=[lat,lon];
 const hdg=heading||0;
+const catNum=typeof cat==='number'?cat:0;
+const catInfo=getAircraftCatInfo(catNum);
 if(aircraftMarkers[icao]){
-// Smooth move existing marker
 const am=aircraftMarkers[icao];
 am.marker.setLatLng(newPos);
-am.marker.getElement()?.querySelector('div')?.style?.setProperty('transform',`rotate(${hdg}deg)`);
-am.marker.setPopupContent(`<strong>${esc((callsign||'').trim()||icao)}</strong><br>${esc(country||'')}<br>Alt: ${Math.round(alt||0)}m | ${Math.round((vel||0)*3.6)} km/h`);
+am.marker.getElement()?.querySelector('.ac-rot')?.style?.setProperty('transform',`rotate(${hdg}deg)`);
+am.marker.setPopupContent(`<strong>${esc((callsign||'').trim()||icao)}</strong><br>${esc(country||'')}<br>${catInfo.label}<br>Alt: ${Math.round(alt||0)}m | ${Math.round((vel||0)*3.6)} km/h`);
 am.positions.push(newPos);
 if(am.positions.length>20)am.positions.shift();
 if(am.trail)igAircraft.removeLayer(am.trail);
-if(am.positions.length>1){am.trail=L.polyline(am.positions,{className:'aircraft-trail',weight:1.5,opacity:0.3,color:'#FFD700'}).addTo(igAircraft)}
+if(am.positions.length>1){am.trail=L.polyline(am.positions,{weight:1.5,opacity:0.3,color:catInfo.color}).addTo(igAircraft)}
 }else{
-// New aircraft
+const sz=catInfo.size;
 const icon=L.divIcon({className:'aircraft-icon',
-html:`<div style="transform:rotate(${hdg}deg);display:inline-block;transition:transform 10s linear"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700"/></svg></div>`,
-iconSize:[16,16],iconAnchor:[8,8]});
+html:`<div class="ac-rot" style="transform:rotate(${hdg}deg);display:inline-block">${catInfo.svg}</div>`,
+iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
 const marker=L.marker(newPos,{icon}).addTo(igAircraft)
-.bindPopup(`<strong>${esc((callsign||'').trim()||icao)}</strong><br>${esc(country||'')}<br>Alt: ${Math.round(alt||0)}m | ${Math.round((vel||0)*3.6)} km/h`);
-aircraftMarkers[icao]={marker,trail:null,positions:[newPos]};
+.bindPopup(`<strong>${esc((callsign||'').trim()||icao)}</strong><br>${esc(country||'')}<br>${catInfo.label}<br>Alt: ${Math.round(alt||0)}m | ${Math.round((vel||0)*3.6)} km/h`);
+aircraftMarkers[icao]={marker,trail:null,positions:[newPos],cat:catNum};
 }
 });
+intelCounts.aircraft=validCount;
 // Remove aircraft no longer in feed
 Object.keys(aircraftMarkers).forEach(icao=>{
 if(!seenIcaos.has(icao)){
@@ -2619,6 +2652,62 @@ L.marker([p.lat,p.lon],{icon}).addTo(igShips)
 });
 if(document.getElementById('layerShips')?.checked)igShips.addTo(window.mapInstance);
 updateIntelCounter();
+}
+
+/* === Belgian Trains (iRail API) === */
+async function fetchTrainsLayer(){
+if(!igTrains||!window.mapInstance)return;
+try{
+const stations=[
+  {name:'Brussels-South',id:'BE.NMBS.008814001',lat:50.8354,lon:4.3365},
+  {name:'Antwerp-Central',id:'BE.NMBS.008821006',lat:51.2172,lon:4.4211},
+  {name:'Ghent-Sint-Pieters',id:'BE.NMBS.008892007',lat:51.0355,lon:3.7107},
+  {name:'Liège-Guillemins',id:'BE.NMBS.008841004',lat:50.6246,lon:5.5667},
+  {name:'Bruges',id:'BE.NMBS.008891009',lat:51.1972,lon:3.2169},
+  {name:'Namur',id:'BE.NMBS.008863008',lat:50.4685,lon:4.8622},
+  {name:'Leuven',id:'BE.NMBS.008831005',lat:50.8815,lon:4.7155},
+  {name:'Mons',id:'BE.NMBS.008871001',lat:50.4543,lon:3.9563},
+  {name:'Charleroi-South',id:'BE.NMBS.008872009',lat:50.3947,lon:4.4398},
+  {name:'Mechelen',id:'BE.NMBS.008821121',lat:51.0177,lon:4.4835}
+];
+igTrains.clearLayers();
+const trainIcon=L.divIcon({
+  className:'aircraft-icon',
+  html:'<div style="font-size:14px;line-height:1">🚆</div>',
+  iconSize:[14,14],iconAnchor:[7,7]
+});
+let count=0;
+for(const st of stations.slice(0,5)){
+  try{
+    const r=await fetch(`https://api.irail.be/liveboard/?station=${encodeURIComponent(st.name)}&format=json&lang=en`);
+    if(!r.ok)continue;
+    const d=await r.json();
+    L.marker([st.lat,st.lon],{icon:trainIcon}).addTo(igTrains)
+      .bindPopup(`<strong>🚆 ${esc(d.stationinfo?.standardname||st.name)}</strong><br>${(d.departures?.departure||[]).length} departures`);
+    count++;
+    const deps=(d.departures?.departure||[]).slice(0,3);
+    deps.forEach(dep=>{
+      const delay=parseInt(dep.delay||0)/60;
+      const timeDiff=(parseInt(dep.time)-Math.floor(Date.now()/1000))/3600;
+      if(timeDiff>0&&timeDiff<0.5){
+        const offsetLat=(Math.random()-0.5)*0.05;
+        const offsetLon=(Math.random()-0.5)*0.05;
+        const movingIcon=L.divIcon({
+          className:'aircraft-icon',
+          html:'<div style="font-size:11px;line-height:1">🚄</div>',
+          iconSize:[11,11],iconAnchor:[5,5]
+        });
+        L.marker([st.lat+offsetLat,st.lon+offsetLon],{icon:movingIcon}).addTo(igTrains)
+          .bindPopup(`<strong>${esc(dep.vehicle||'Train')}</strong><br>→ ${esc(dep.stationinfo?.standardname||dep.station||'')}<br>Platform ${esc(dep.platform||'?')}${delay>0?`<br><span style="color:#EF4444">+${Math.round(delay)} min</span>`:''}`);
+        count++;
+      }
+    });
+  }catch(e){/* skip station */}
+}
+intelCounts.trains=count;
+if(document.getElementById('layerTrains')?.checked&&!window.mapInstance.hasLayer(igTrains))igTrains.addTo(window.mapInstance);
+updateIntelCounter();
+}catch(e){console.warn('Trains fetch failed:',e);}
 }
 
 /* === Weather Radar (RainViewer) === */
