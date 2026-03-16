@@ -284,9 +284,24 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 /* UNIT TREE */
 .unit-tree-row{display:flex;align-items:center;padding:.45rem .75rem;border-bottom:1px solid var(--border);font-size:.82rem}
 .unit-tree-row:hover{background:rgba(200,164,78,.03)}
-/* MAP */
-.map-container{height:500px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border);margin-bottom:1rem}
+/* MAP — military dark theme */
+.map-container{height:500px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid rgba(200,164,78,.15);margin-bottom:1rem}
 .map-sidebar{display:grid;grid-template-columns:1fr 300px;gap:1rem}
+/* Leaflet popup military style */
+.leaflet-popup-content-wrapper{background:rgba(12,17,23,.92)!important;color:#D1D5DB!important;border:1px solid rgba(200,164,78,.2)!important;border-radius:4px!important;font-family:'Inter',sans-serif!important;font-size:.78rem!important;backdrop-filter:blur(8px)!important;box-shadow:0 4px 20px rgba(0,0,0,.5)!important}
+.leaflet-popup-content{margin:8px 12px!important;line-height:1.5!important}
+.leaflet-popup-content strong{color:#C8A44E!important}
+.leaflet-popup-tip{background:rgba(12,17,23,.92)!important;border:1px solid rgba(200,164,78,.2)!important}
+.leaflet-popup-close-button{color:#7A8B9A!important}
+.leaflet-popup-close-button:hover{color:#C8A44E!important}
+/* Leaflet zoom controls military style */
+.leaflet-control-zoom a{background:rgba(12,17,23,.85)!important;color:#C8A44E!important;border-color:rgba(200,164,78,.2)!important}
+.leaflet-control-zoom a:hover{background:rgba(200,164,78,.15)!important}
+.leaflet-control-attribution{background:rgba(12,17,23,.6)!important;color:#4B5563!important;font-size:.55rem!important}
+.leaflet-control-attribution a{color:#6B7280!important}
+/* Map grid overlay scanlines */
+#tacticalMap{position:relative}
+#tacticalMap::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:999;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(200,164,78,.015) 2px,rgba(200,164,78,.015) 4px);mix-blend-mode:overlay}
 .weather-widget{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem}
 .weather-widget h4{font-size:.75rem;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:.75rem;font-weight:700}
 .weather-main{display:flex;align-items:center;gap:1rem;margin-bottom:.75rem}
@@ -2432,8 +2447,10 @@ el.innerHTML=`
 clearMapIntervals();
 
 if(window.mapInstance){window.mapInstance.remove();window.mapInstance=null}
-window.mapInstance=L.map('tacticalMap',{worldCopyJump:true,minZoom:2,maxZoom:18}).setView([50.5,10],4);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors',noWrap:false}).addTo(window.mapInstance);
+window.mapInstance=L.map('tacticalMap',{worldCopyJump:true,minZoom:2,maxZoom:18,zoomControl:false}).setView([50.5,10],4);
+L.control.zoom({position:'topright'}).addTo(window.mapInstance);
+// Dark military tile layer (CartoDB Dark Matter)
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/">OSM</a>',subdomains:'abcd',maxZoom:20}).addTo(window.mapInstance);
 
 /* --- init layer groups --- */
 igAircraft=L.layerGroup();
@@ -2510,9 +2527,15 @@ window.mapInstance.on('click',function(e){
   }
 });
 
-/* add checked layers to map */
-igUnits.addTo(window.mapInstance);
-igDeploy.addTo(window.mapInstance);
+/* add all checked layers to map at init */
+if(document.getElementById('layerAircraft')?.checked)igAircraft.addTo(window.mapInstance);
+if(document.getElementById('layerSatellite')?.checked)igSatellite.addTo(window.mapInstance);
+if(document.getElementById('layerTrains')?.checked)igTrains.addTo(window.mapInstance);
+if(document.getElementById('layerEarthquakes')?.checked)igEarthquakes.addTo(window.mapInstance);
+if(document.getElementById('layerFires')?.checked)igFires.addTo(window.mapInstance);
+if(document.getElementById('layerShips')?.checked)igShips.addTo(window.mapInstance);
+if(document.getElementById('layerUnits')?.checked)igUnits.addTo(window.mapInstance);
+if(document.getElementById('layerDeploy')?.checked)igDeploy.addTo(window.mapInstance);
 
 /* --- layer toggle listeners --- */
 document.getElementById('layerAircraft')?.addEventListener('change',e=>{
@@ -2672,7 +2695,8 @@ delete aircraftMarkers[icao];
 });
 if(document.getElementById('layerAircraft')?.checked&&!window.mapInstance.hasLayer(igAircraft))igAircraft.addTo(window.mapInstance);
 updateIntelCounter();
-}catch(e){console.warn('Aircraft fetch failed:',e);}
+console.log('[AIR] '+validCount+' aircraft tracked over Europe');
+}catch(e){console.warn('[AIR] Aircraft fetch failed:',e);}
 }
 
 /* === Satellite Constellation Tracker (CelesTrak TLE + satellite.js SGP4) === */
@@ -2681,34 +2705,30 @@ let issMarker=null,issTrailPositions=[],issTrailLine=null; // kept for backward 
 async function loadSatelliteTLEs(){
   if(satLoaded)return;
   satRecords=[];
-  for(const group of SAT_GROUPS){
-    try{
-      const r=await fetch(group.url);
-      if(!r.ok)continue;
-      const data=await r.json();
-      const sats=data.slice(0,group.max);
-      sats.forEach(omm=>{
-        try{
-          if(!omm.TLE_LINE1||!omm.TLE_LINE2)return;
-          const satrec=satellite.twoline2satrec(omm.TLE_LINE1,omm.TLE_LINE2);
-          if(!satrec||satrec.error!==0)return;
-          satRecords.push({
-            name:omm.OBJECT_NAME||'Unknown',
-            noradId:omm.NORAD_CAT_ID,
-            group:group.name,
-            color:group.color,
-            icon:group.icon,
-            satrec:satrec,
-            marker:null
-          });
-        }catch(e){/* skip bad TLE */}
-      });
-    }catch(e){console.warn('Failed to load '+group.name+':',e);}
-  }
+  console.log('[SAT] Loading TLEs from CelesTrak...');
+  const results=await Promise.allSettled(SAT_GROUPS.map(async group=>{
+    const r=await fetch(group.url);
+    if(!r.ok)throw new Error('HTTP '+r.status+' for '+group.name);
+    const data=await r.json();
+    let count=0;
+    data.slice(0,group.max).forEach(omm=>{
+      try{
+        if(!omm.TLE_LINE1||!omm.TLE_LINE2)return;
+        const satrec=satellite.twoline2satrec(omm.TLE_LINE1,omm.TLE_LINE2);
+        if(!satrec||satrec.error!==0)return;
+        satRecords.push({name:omm.OBJECT_NAME||'Unknown',noradId:omm.NORAD_CAT_ID,group:group.name,color:group.color,icon:group.icon,satrec:satrec,marker:null});
+        count++;
+      }catch(e){}
+    });
+    console.log('[SAT] '+group.name+': '+count+' satellites loaded');
+    return count;
+  }));
+  results.forEach((r,i)=>{if(r.status==='rejected')console.warn('[SAT] Failed: '+SAT_GROUPS[i].name,r.reason)});
   satLoaded=true;
   intelCounts.satellites=satRecords.length;
   updateIntelCounter();
-  console.log('Loaded '+satRecords.length+' satellites');
+  console.log('[SAT] Total: '+satRecords.length+' satellites ready for SGP4 propagation');
+  showToast(satRecords.length+' satellites tracked','info');
 }
 
 function updateSatellitePositions(){
