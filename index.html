@@ -302,6 +302,9 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 /* Map grid overlay scanlines */
 #tacticalMap{position:relative}
 #tacticalMap::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:999;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(200,164,78,.015) 2px,rgba(200,164,78,.015) 4px);mix-blend-mode:overlay}
+/* CONFLICT ZONES PULSING */
+.conflict-pulse{animation:conflictPulse 2s ease-in-out infinite}
+@keyframes conflictPulse{0%,100%{opacity:.8}50%{opacity:.3}}
 .weather-widget{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem}
 .weather-widget h4{font-size:.75rem;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:.75rem;font-weight:700}
 .weather-main{display:flex;align-items:center;gap:1rem;margin-bottom:.75rem}
@@ -571,7 +574,8 @@ aircraft:'Aéronefs',satellites:'Satellites',earthquakes:'Séismes',active_fires
 ships:'Navires',radar:'Radar météo',total_tracks:'Pistes totales',
 trains:'Trains',helicopters:'Hélicoptères',drones:'Drones',heavy_aircraft:'Gros porteurs',light_aircraft:'Aviation légère',glider:'Planeur',sat_count:'satellites suivis',
 ops:'Opérations',sitrep:'SITREP',contact_report:'CONTACT',medevac:'MEDEVAC',spotrep:'SPOTREP',
-measure:'Mesurer',clear:'Effacer',alert_state:'État d\'alerte',zulu_time:'Heure Zulu',copy_clipboard:'Copier'
+measure:'Mesurer',clear:'Effacer',alert_state:'État d\'alerte',zulu_time:'Heure Zulu',copy_clipboard:'Copier',
+conflicts:'Zones de conflit',conflict_zones:'Zones de conflit'
 },nl:{
 dashboard:'Dashboard',personnel:'Personeel',certifications:'Certificeringen',
 alerts:'Waarschuwingen',reports:'Rapporten',deployments:'Inzetten',settings:'Instellingen',
@@ -657,7 +661,8 @@ aircraft:'Vliegtuigen',satellites:'Satellieten',earthquakes:'Aardbevingen',activ
 ships:'Schepen',radar:'Weerradar',total_tracks:'Totaal tracks',
 trains:'Treinen',helicopters:'Helikopters',drones:'Drones',heavy_aircraft:'Groot vliegtuig',light_aircraft:'Lichte luchtvaart',glider:'Zweefvliegtuig',sat_count:'satellieten gevolgd',
 ops:'Operaties',sitrep:'SITREP',contact_report:'CONTACT',medevac:'MEDEVAC',spotrep:'SPOTREP',
-measure:'Meten',clear:'Wissen',alert_state:'Alarmstatus',zulu_time:'Zulu tijd',copy_clipboard:'Kopiëren'
+measure:'Meten',clear:'Wissen',alert_state:'Alarmstatus',zulu_time:'Zulu tijd',copy_clipboard:'Kopiëren',
+conflicts:'Conflictzones',conflict_zones:'Conflictzones'
 },en:{
 dashboard:'Dashboard',personnel:'Personnel',certifications:'Certifications',
 alerts:'Alerts',reports:'Reports',deployments:'Deployments',settings:'Settings',
@@ -743,7 +748,8 @@ aircraft:'Aircraft',satellites:'Satellites',earthquakes:'Earthquakes',active_fir
 ships:'Ships',radar:'Weather Radar',total_tracks:'Total Tracks',
 trains:'Trains',helicopters:'Helicopters',drones:'Drones',heavy_aircraft:'Heavy Aircraft',light_aircraft:'Light Aircraft',glider:'Glider',sat_count:'satellites tracked',
 ops:'Operations',sitrep:'SITREP',contact_report:'CONTACT',medevac:'MEDEVAC',spotrep:'SPOTREP',
-measure:'Measure',clear:'Clear',alert_state:'Alert State',zulu_time:'Zulu Time',copy_clipboard:'Copy'
+measure:'Measure',clear:'Clear',alert_state:'Alert State',zulu_time:'Zulu Time',copy_clipboard:'Copy',
+conflicts:'Conflict Zones',conflict_zones:'Conflict Zones'
 }};
 function t(k){return T[currentLang]?.[k]||T.fr[k]||k}
 function rankLabel(id){const r=RANKS.find(x=>x.id===id);return r?r[currentLang]||r.fr:id||''}
@@ -2358,9 +2364,9 @@ const DEPLOY_COORDS={
 };
 
 /* --- Intelligence layer groups (module-level) --- */
-let igAircraft=null,igSatellite=null,igEarthquakes=null,igFires=null,igShips=null,igUnits=null,igDeploy=null,igTrains=null;
+let igAircraft=null,igSatellite=null,igEarthquakes=null,igFires=null,igShips=null,igUnits=null,igDeploy=null,igTrains=null,igConflicts=null;
 let igRadar=null;
-let intelCounts={aircraft:0,satellites:0,earthquakes:0,fires:0,ships:0,trains:0,units:0,deployments:0};
+let intelCounts={aircraft:0,satellites:0,earthquakes:0,fires:0,ships:0,trains:0,units:0,deployments:0,conflicts:0};
 let mapIntervals=[];
 
 /* --- Satellite constellation tracker --- */
@@ -2379,7 +2385,7 @@ const SAT_GROUPS=[
 let satRecords=[];   // {name,satrec,group,color,icon,noradId,marker}
 let satLoaded=false;
 
-function clearMapIntervals(){mapIntervals.forEach(id=>clearInterval(id));mapIntervals=[];aircraftMarkers={};issMarker=null;issTrailPositions=[];issTrailLine=null;igTrains=null;satRecords.forEach(s=>{s.marker=null});satLoaded=false}
+function clearMapIntervals(){mapIntervals.forEach(id=>clearInterval(id));mapIntervals=[];aircraftMarkers={};issMarker=null;issTrailPositions=[];issTrailLine=null;igTrains=null;igConflicts=null;satRecords.forEach(s=>{s.marker=null});satLoaded=false}
 
 function renderMap(){
 const el=document.getElementById('page-map');if(!el)return;
@@ -2431,6 +2437,7 @@ el.innerHTML=`
       <label><input type="checkbox" id="layerFires"> 🔥 ${t('active_fires')} (NASA)</label>
       <label><input type="checkbox" id="layerShips"> 🚢 ${t('ships')} (AIS)</label>
       <label><input type="checkbox" id="layerRadar"> 🌧️ ${t('radar')}</label>
+      <label><input type="checkbox" id="layerConflicts" checked> ⚠️ ${t('conflicts')}</label>
       <label><input type="checkbox" id="layerUnits" checked> ⚔️ ${t('map_units')} (NATO)</label>
       <label><input type="checkbox" id="layerDeploy" checked> 🎯 ${t('map_deployments')}</label>
     </div>
@@ -2459,6 +2466,7 @@ igEarthquakes=L.layerGroup();
 igFires=L.layerGroup();
 igShips=L.layerGroup();
 igTrains=L.layerGroup();
+igConflicts=L.layerGroup();
 igUnits=L.layerGroup();
 igDeploy=L.layerGroup();
 
@@ -2531,6 +2539,7 @@ window.mapInstance.on('click',function(e){
 if(document.getElementById('layerAircraft')?.checked)igAircraft.addTo(window.mapInstance);
 if(document.getElementById('layerSatellite')?.checked)igSatellite.addTo(window.mapInstance);
 if(document.getElementById('layerTrains')?.checked)igTrains.addTo(window.mapInstance);
+if(document.getElementById('layerConflicts')?.checked)igConflicts.addTo(window.mapInstance);
 if(document.getElementById('layerEarthquakes')?.checked)igEarthquakes.addTo(window.mapInstance);
 if(document.getElementById('layerFires')?.checked)igFires.addTo(window.mapInstance);
 if(document.getElementById('layerShips')?.checked)igShips.addTo(window.mapInstance);
@@ -2543,6 +2552,9 @@ e.target.checked?igAircraft.addTo(window.mapInstance):window.mapInstance.removeL
 });
 document.getElementById('layerTrains')?.addEventListener('change',e=>{
 e.target.checked?igTrains.addTo(window.mapInstance):window.mapInstance.removeLayer(igTrains);
+});
+document.getElementById('layerConflicts')?.addEventListener('change',e=>{
+e.target.checked?igConflicts.addTo(window.mapInstance):window.mapInstance.removeLayer(igConflicts);
 });
 document.getElementById('layerSatellite')?.addEventListener('change',e=>{
 e.target.checked?igSatellite.addTo(window.mapInstance):window.mapInstance.removeLayer(igSatellite);
@@ -2576,6 +2588,7 @@ fetchFiresLayer();
 addShipsLayer();
 fetchRadarLayer();
 fetchTrainsLayer();
+addConflictZones();
 updateIntelCounter();
 
 /* Load satellite TLEs then start propagation */
@@ -2604,6 +2617,7 @@ el.innerHTML=`
 <div class="ic-row"><span>🔴 ${t('earthquakes')}</span><span class="ic-val">${intelCounts.earthquakes}</span></div>
 <div class="ic-row"><span>🔥 ${t('active_fires')}</span><span class="ic-val">${intelCounts.fires}</span></div>
 <div class="ic-row"><span>🚢 ${t('ships')}</span><span class="ic-val">${intelCounts.ships}</span></div>
+<div class="ic-row"><span>⚠️ ${t('conflicts')}</span><span class="ic-val">${intelCounts.conflicts}</span></div>
 <div class="ic-row"><span>⚔️ ${t('map_units')}</span><span class="ic-val">${intelCounts.units}</span></div>
 <div class="ic-row"><span>🎯 ${t('map_deployments')}</span><span class="ic-val">${intelCounts.deployments}</span></div>
 <div style="border-top:1px solid rgba(200,164,78,.2);margin-top:.3rem;padding-top:.3rem">
@@ -2870,73 +2884,203 @@ if(document.getElementById('layerShips')?.checked)igShips.addTo(window.mapInstan
 updateIntelCounter();
 }
 
-/* === Belgian Trains (iRail API) === */
+/* === Belgian Trains (iRail API) — rich version with full routes === */
 async function fetchTrainsLayer(){
-if(!igTrains||!window.mapInstance)return;
-try{
-const stations=[
-  {name:'Brussels-South',id:'BE.NMBS.008814001',lat:50.8354,lon:4.3365},
-  {name:'Antwerp-Central',id:'BE.NMBS.008821006',lat:51.2172,lon:4.4211},
-  {name:'Ghent-Sint-Pieters',id:'BE.NMBS.008892007',lat:51.0355,lon:3.7107},
-  {name:'Liège-Guillemins',id:'BE.NMBS.008841004',lat:50.6246,lon:5.5667},
-  {name:'Bruges',id:'BE.NMBS.008891009',lat:51.1972,lon:3.2169},
-  {name:'Namur',id:'BE.NMBS.008863008',lat:50.4685,lon:4.8622},
-  {name:'Leuven',id:'BE.NMBS.008831005',lat:50.8815,lon:4.7155},
-  {name:'Mons',id:'BE.NMBS.008871001',lat:50.4543,lon:3.9563},
-  {name:'Charleroi-South',id:'BE.NMBS.008872009',lat:50.3947,lon:4.4398},
-  {name:'Mechelen',id:'BE.NMBS.008821121',lat:51.0177,lon:4.4835}
-];
-igTrains.clearLayers();
-const trainIcon=L.divIcon({
-  className:'aircraft-icon',
-  html:'<div style="font-size:14px;line-height:1">🚆</div>',
-  iconSize:[14,14],iconAnchor:[7,7]
-});
-let count=0;
-for(const st of stations.slice(0,5)){
+  if(!igTrains||!window.mapInstance)return;
   try{
-    const r=await fetch(`https://api.irail.be/liveboard/?station=${encodeURIComponent(st.name)}&format=json&lang=en`);
-    if(!r.ok)continue;
-    const d=await r.json();
-    const depList=d.departures?.departure||[];
-    const depSummary=depList.slice(0,3).map(dep=>{
-      const delayMin=Math.round(parseInt(dep.delay||0)/60);
-      const dest=esc(dep.stationinfo?.standardname||dep.station||'?');
-      const veh=esc((dep.vehicle||'').replace(/^BE\.NMBS\./,''));
-      const depTime=new Date(parseInt(dep.time)*1000).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-      const delayStr=delayMin>0?` <span style="color:#EF4444">+${delayMin}m</span>`:` <span style="color:#22C55E">on time</span>`;
-      return `${depTime}${delayStr} → ${dest} (${veh})`;
-    }).join('<br>');
-    L.marker([st.lat,st.lon],{icon:trainIcon}).addTo(igTrains)
-      .bindPopup(`<strong>🚆 ${esc(d.stationinfo?.standardname||st.name)}</strong><br>${depList.length} departures<br><hr style="margin:.3rem 0;border-color:rgba(200,164,78,.2)">${depSummary}`);
-    count++;
-    depList.slice(0,3).forEach(dep=>{
-      const delay=parseInt(dep.delay||0)/60;
-      const timeDiff=(parseInt(dep.time)-Math.floor(Date.now()/1000))/3600;
-      if(timeDiff>0&&timeDiff<0.5){
-        const offsetLat=(Math.random()-0.5)*0.05;
-        const offsetLon=(Math.random()-0.5)*0.05;
-        const movingIcon=L.divIcon({
-          className:'aircraft-icon',
-          html:'<div style="font-size:11px;line-height:1">🚄</div>',
-          iconSize:[11,11],iconAnchor:[5,5]
+    igTrains.clearLayers();
+    let count=0;
+
+    // Major Belgian stations with coordinates
+    const stations=[
+      {name:'Bruxelles-Midi',lat:50.8354,lon:4.3365},
+      {name:'Antwerpen-Centraal',lat:51.2172,lon:4.4211},
+      {name:'Gent-Sint-Pieters',lat:51.0355,lon:3.7107},
+      {name:'Liège-Guillemins',lat:50.6246,lon:5.5667},
+      {name:'Brugge',lat:51.1972,lon:3.2169}
+    ];
+
+    // Fetch liveboards to get active vehicle IDs
+    const vehicleIds=new Set();
+    for(const st of stations){
+      try{
+        const r=await fetch(`https://api.irail.be/liveboard/?station=${encodeURIComponent(st.name)}&format=json&lang=en&alerts=false`);
+        if(!r.ok)continue;
+        const d=await r.json();
+        const deps=d.departures?.departure||[];
+        deps.slice(0,4).forEach(dep=>{
+          if(dep.vehicleinfo?.shortname)vehicleIds.add(dep.vehicleinfo.shortname);
+          else if(dep.vehicle)vehicleIds.add(dep.vehicle.replace('BE.NMBS.',''));
         });
-        const delayMin=Math.round(delay);
-        const platform=dep.platforminfo?.normal||dep.platform||'?';
-        const dest=esc(dep.stationinfo?.standardname||dep.station||'?');
-        const veh=esc((dep.vehicle||'Train').replace(/^BE\.NMBS\./,''));
-        const delayHtml=delayMin>0?`<br><span style="color:#EF4444">Delay: +${delayMin} min</span>`:`<br><span style="color:#22C55E">On time</span>`;
-        L.marker([st.lat+offsetLat,st.lon+offsetLon],{icon:movingIcon}).addTo(igTrains)
-          .bindPopup(`<strong>${veh}</strong><br>→ ${dest}<br>Platform ${esc(String(platform))}${delayHtml}`);
+      }catch(e){/* skip station */}
+    }
+
+    // Fetch vehicle details for up to 15 trains
+    const vehicles=[...vehicleIds].slice(0,15);
+    for(const vid of vehicles){
+      try{
+        const r=await fetch(`https://api.irail.be/vehicle/?id=BE.NMBS.${vid}&format=json&lang=en&alerts=false`);
+        if(!r.ok)continue;
+        const v=await r.json();
+        const stops=v.stops?.stop||[];
+        if(stops.length<2)continue;
+
+        const now=Math.floor(Date.now()/1000);
+        const origin=stops[0];
+        const destination=stops[stops.length-1];
+
+        // Build route coordinates from stops that have stationinfo
+        const routeCoords=[];
+        let currentStopIdx=0;
+        stops.forEach((s,i)=>{
+          if(s.stationinfo?.locationY&&s.stationinfo?.locationX){
+            routeCoords.push([parseFloat(s.stationinfo.locationY),parseFloat(s.stationinfo.locationX)]);
+          }
+          const depTime=parseInt(s.time)+parseInt(s.delay||0);
+          if(depTime<=now)currentStopIdx=i;
+        });
+
+        if(routeCoords.length<2)continue;
+
+        // Draw route polyline
+        L.polyline(routeCoords,{
+          color:'#22C55E',
+          weight:2.5,
+          opacity:0.5,
+          dashArray:'8 6'
+        }).addTo(igTrains);
+
+        // Estimate current position (interpolate between current stop and next)
+        let trainLat,trainLon;
+        const curStop=stops[currentStopIdx];
+        const nextStop=stops[Math.min(currentStopIdx+1,stops.length-1)];
+        if(curStop?.stationinfo?.locationY&&nextStop?.stationinfo?.locationY){
+          const curTime=parseInt(curStop.time)+parseInt(curStop.delay||0);
+          const nextTime=parseInt(nextStop.time)+parseInt(nextStop.delay||0);
+          const progress=nextTime>curTime?Math.min(Math.max((now-curTime)/(nextTime-curTime),0),1):0.5;
+          trainLat=parseFloat(curStop.stationinfo.locationY)+progress*(parseFloat(nextStop.stationinfo.locationY)-parseFloat(curStop.stationinfo.locationY));
+          trainLon=parseFloat(curStop.stationinfo.locationX)+progress*(parseFloat(nextStop.stationinfo.locationX)-parseFloat(curStop.stationinfo.locationX));
+        }else{
+          trainLat=routeCoords[0][0];
+          trainLon=routeCoords[0][1];
+        }
+
+        // Determine train type and color from vehicle ID
+        const trainType=vid.startsWith('IC')?'InterCity':vid.startsWith('S')?'S-Train':vid.startsWith('L')?'Local':vid.startsWith('P')?'Peak':vid.startsWith('THA')?'Thalys':vid.startsWith('EUR')?'Eurostar':'Train';
+        const trainColor=vid.startsWith('IC')?'#3B82F6':(vid.startsWith('THA')||vid.startsWith('EUR'))?'#EF4444':'#22C55E';
+
+        // Train marker icon
+        const trainIcon=L.divIcon({
+          className:'aircraft-icon',
+          html:`<div style="font-size:14px;line-height:1;filter:drop-shadow(0 0 4px ${trainColor})">🚆</div>`,
+          iconSize:[14,14],iconAnchor:[7,7]
+        });
+
+        // Build rich popup with all stops
+        const totalDelay=parseInt(destination.delay||0);
+        const delayMin=Math.round(totalDelay/60);
+        const delayColor=delayMin>5?'#EF4444':delayMin>0?'#EAB308':'#22C55E';
+        const delayText=delayMin>0?`<span style="color:${delayColor};font-weight:700">+${delayMin} min</span>`:`<span style="color:#22C55E;font-weight:700">ON TIME</span>`;
+
+        let stopsHtml='<div style="max-height:150px;overflow-y:auto;margin-top:.4rem;font-size:.7rem;border-top:1px solid rgba(200,164,78,.15);padding-top:.3rem">';
+        stops.forEach((s,i)=>{
+          const sDelay=Math.round(parseInt(s.delay||0)/60);
+          const sTime=new Date(parseInt(s.time)*1000).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+          const isCurrent=i===currentStopIdx;
+          const isPast=parseInt(s.time)+parseInt(s.delay||0)<now;
+          const opacity=isPast?'0.5':'1';
+          const marker=isCurrent?'▶':isPast?'✓':'○';
+          const delayS=sDelay>0?` <span style="color:#EF4444">+${sDelay}</span>`:'';
+          stopsHtml+=`<div style="opacity:${opacity};padding:.1rem 0">${marker} ${sTime}${delayS} — ${esc(s.station||s.stationinfo?.standardname||'')}</div>`;
+        });
+        stopsHtml+='</div>';
+
+        const popup=`<strong style="font-size:.85rem">${esc(trainType)} ${esc(vid)}</strong><br>`+
+          `<span style="color:var(--accent)">${esc(origin.station||origin.stationinfo?.standardname||'')} → ${esc(destination.station||destination.stationinfo?.standardname||'')}</span><br>`+
+          `${delayText} | ${stops.length} stops<br>`+
+          `Platform: ${esc(curStop?.platform||'?')}`+
+          stopsHtml;
+
+        L.marker([trainLat,trainLon],{icon:trainIcon}).addTo(igTrains).bindPopup(popup,{maxWidth:300});
         count++;
-      }
-    });
-  }catch(e){/* skip station */}
+
+        // Station dots along the route
+        stops.forEach(s=>{
+          if(!s.stationinfo?.locationY)return;
+          L.circleMarker(
+            [parseFloat(s.stationinfo.locationY),parseFloat(s.stationinfo.locationX)],
+            {radius:3,fillColor:'#22C55E',color:'#fff',weight:1,fillOpacity:0.6}
+          ).addTo(igTrains).bindPopup(`<strong>${esc(s.station||s.stationinfo?.standardname||'')}</strong><br>Platform ${esc(s.platform||'?')}`);
+        });
+
+      }catch(e){console.warn('[TRAIN] Vehicle fetch failed:',vid,e);}
+    }
+
+    intelCounts.trains=count;
+    if(document.getElementById('layerTrains')?.checked&&!window.mapInstance.hasLayer(igTrains))igTrains.addTo(window.mapInstance);
+    updateIntelCounter();
+    console.log('[TRAIN] '+count+' trains tracked with full routes');
+  }catch(e){console.warn('[TRAIN] Trains fetch failed:',e);}
 }
-intelCounts.trains=count;
-if(document.getElementById('layerTrains')?.checked&&!window.mapInstance.hasLayer(igTrains))igTrains.addTo(window.mapInstance);
-updateIntelCounter();
-}catch(e){console.warn('Trains fetch failed:',e);}
+
+/* === Global Conflict Zones (factual, as of March 2026) === */
+function addConflictZones(){
+  if(!igConflicts||!window.mapInstance)return;
+  igConflicts.clearLayers();
+
+  // Factual active conflicts as of March 2026 — source: ACLED, IISS, UN
+  const conflicts=[
+    {name:'Ukraine — Russia-Ukraine War',lat:48.5,lon:37.0,radius:300000,severity:'high',since:'2022',parties:'Ukraine vs Russia',type:'Interstate War',fatalities:'500,000+',status:'Active — front lines in Donetsk, Luhansk, Zaporizhzhia'},
+    {name:'Gaza — Israel-Hamas War',lat:31.4,lon:34.4,radius:50000,severity:'high',since:'2023',parties:'Israel vs Hamas/PIJ',type:'Armed Conflict',fatalities:'45,000+',status:'Active — ceasefire negotiations ongoing'},
+    {name:'Sudan Civil War',lat:15.5,lon:32.5,radius:400000,severity:'high',since:'2023',parties:'SAF vs RSF',type:'Civil War',fatalities:'150,000+',status:'Active — humanitarian catastrophe'},
+    {name:'Myanmar Civil War',lat:19.8,lon:96.2,radius:350000,severity:'high',since:'2021',parties:'Junta vs NUG/EAOs',type:'Civil War',fatalities:'50,000+',status:'Active — resistance advancing'},
+    {name:'Yemen — Houthi Conflict',lat:15.3,lon:44.2,radius:200000,severity:'medium',since:'2014',parties:'Houthis vs Saudi Coalition',type:'Civil War',fatalities:'150,000+',status:'Active — Red Sea shipping attacks'},
+    {name:'Syria — Ongoing Insurgency',lat:35.2,lon:38.9,radius:250000,severity:'medium',since:'2011',parties:'Multiple factions',type:'Civil War / Insurgency',fatalities:'500,000+',status:'Low-intensity — fragmented control'},
+    {name:'Somalia — Al-Shabaab Insurgency',lat:2.0,lon:45.3,radius:250000,severity:'medium',since:'2006',parties:'Govt/AMISOM vs Al-Shabaab',type:'Insurgency',fatalities:'20,000+',status:'Active — ongoing operations'},
+    {name:'DR Congo — M23 / Eastern Congo',lat:-1.5,lon:29.0,radius:200000,severity:'medium',since:'2022',parties:'DRC Army vs M23/ADF',type:'Armed Conflict',fatalities:'10,000+',status:'Active — Goma region'},
+    {name:'Ethiopia — Regional Conflicts',lat:9.0,lon:38.7,radius:200000,severity:'medium',since:'2020',parties:'Federal vs Regional forces',type:'Internal Conflict',fatalities:'600,000+',status:'Post-Tigray — Amhara unrest'},
+    {name:'Sahel — Jihadist Insurgency',lat:14.0,lon:0.0,radius:500000,severity:'medium',since:'2012',parties:'JNIM/ISGS vs Sahel states',type:'Insurgency',fatalities:'30,000+',status:'Active — Mali, Burkina Faso, Niger'},
+    {name:'Haiti — Gang Violence',lat:18.5,lon:-72.3,radius:50000,severity:'medium',since:'2021',parties:'Gangs vs State/UN',type:'Criminal Conflict',fatalities:'5,000+',status:'Active — Port-au-Prince siege'},
+    {name:'Colombia — Armed Groups',lat:4.6,lon:-74.1,radius:200000,severity:'low',since:'1964',parties:'ELN/FARC remnants vs State',type:'Insurgency',fatalities:'260,000+',status:'Low-intensity — peace process'},
+    {name:'Pakistan — Balochistan/TTP',lat:30.0,lon:67.0,radius:200000,severity:'low',since:'2004',parties:'TTP/BLA vs Pakistan Army',type:'Insurgency',fatalities:'80,000+',status:'Active — border attacks'},
+    {name:'Mozambique — Cabo Delgado',lat:-12.5,lon:40.5,radius:100000,severity:'low',since:'2017',parties:'ASWJ vs SADC/Govt',type:'Insurgency',fatalities:'5,000+',status:'Active — SADC mission'},
+  ];
+
+  intelCounts.conflicts=conflicts.length;
+
+  conflicts.forEach(c=>{
+    const color=c.severity==='high'?'#EF4444':c.severity==='medium'?'#F97316':'#EAB308';
+    const fillOpacity=c.severity==='high'?0.15:0.10;
+
+    // Conflict zone circle
+    L.circle([c.lat,c.lon],{
+      radius:c.radius,
+      fillColor:color,
+      color:color,
+      weight:1.5,
+      fillOpacity:fillOpacity,
+      dashArray:c.severity==='high'?'':'5 5'
+    }).addTo(igConflicts).bindPopup(
+      `<strong style="color:${color};font-size:.9rem">${esc(c.name)}</strong><br>`+
+      `<span style="color:var(--accent)">Type:</span> ${esc(c.type)}<br>`+
+      `<span style="color:var(--accent)">Parties:</span> ${esc(c.parties)}<br>`+
+      `<span style="color:var(--accent)">Since:</span> ${esc(c.since)}<br>`+
+      `<span style="color:var(--accent)">Fatalities:</span> ${esc(c.fatalities)}<br>`+
+      `<span style="color:var(--accent)">Status:</span> ${esc(c.status)}`,
+      {maxWidth:320}
+    );
+
+    // Center marker for high-severity conflicts
+    if(c.severity==='high'){
+      L.circleMarker([c.lat,c.lon],{
+        radius:6,fillColor:color,color:'#fff',weight:1.5,fillOpacity:0.9
+      }).addTo(igConflicts);
+    }
+  });
+
+  if(document.getElementById('layerConflicts')?.checked)igConflicts.addTo(window.mapInstance);
+  updateIntelCounter();
+  console.log('[CONFLICTS] '+conflicts.length+' active conflict zones loaded');
 }
 
 /* === Weather Radar (RainViewer) === */
