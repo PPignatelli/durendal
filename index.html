@@ -2682,41 +2682,49 @@ function getAircraftCatInfo(cat){return AIRCRAFT_CAT_INFO[cat]||AIRCRAFT_CAT_INF
 async function fetchAircraftLayer(){
 if(!igAircraft||!window.mapInstance)return;
 try{
-// Use map bounds to only fetch visible area, clamped to reasonable size
-const b=window.mapInstance.getBounds();
-const lamin=Math.max(b.getSouth(),-90).toFixed(1);
-const lamax=Math.min(b.getNorth(),90).toFixed(1);
-const lomin=Math.max(b.getWest(),-180).toFixed(1);
-const lomax=Math.min(b.getEast(),180).toFixed(1);
-const r=await fetch(`https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`);
+const center=window.mapInstance.getCenter();
+const zoom=window.mapInstance.getZoom();
+const dist=zoom>=8?100:zoom>=6?250:zoom>=4?450:800;
+const r=await fetch(`https://api.adsb.lol/v2/lat/${center.lat.toFixed(4)}/lon/${center.lng.toFixed(4)}/dist/${dist}`);
 if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
-if(!d.states){intelCounts.aircraft=0;updateIntelCounter();return;}
-const seenIcaos=new Set();
+const acList=d.ac||[];
+const seenHex=new Set();
 let validCount=0;
-d.states.forEach(s=>{
-const icao=s[0], callsign=s[1], country=s[2], lon=s[5], lat=s[6], alt=s[7]||s[13]||0, onGround=s[8], vel=s[9], heading=s[10], vRate=s[11], geoAlt=s[13], squawk=s[14], cat=s[17];
+acList.forEach(a=>{
+const hex=a.hex;if(!hex)return;
+const lat=a.lat,lon=a.lon;
 if(lat==null||lon==null)return;
-if(onGround) return; // Skip aircraft on ground — they clutter the map
+if(a.alt_baro==='ground')return;
 validCount++;
-seenIcaos.add(icao);
+seenHex.add(hex);
 const newPos=[lat,lon];
-const hdg=heading||0;
-const catNum=typeof cat==='number'?cat:0;
-const catInfo=getAircraftCatInfo(catNum);
-const popupContent=
-  `<strong>${esc((callsign||'').trim()||icao)}</strong><br>` +
-  `${esc(country||'')}<br>` +
-  `<span style="color:var(--accent)">${catInfo.label}</span><br>` +
-  `ALT: ${Math.round(alt)} m (${Math.round(alt*3.281)} ft)<br>` +
-  `SPD: ${Math.round((vel||0)*3.6)} km/h (${Math.round((vel||0)*1.944)} kts)<br>` +
-  `HDG: ${heading!=null?Math.round(heading)+'°':'N/A'}<br>` +
-  `V/S: ${vRate!=null?(vRate>0?'+':'')+Math.round(vRate*196.85)+' ft/min':'N/A'}` +
-  (squawk?`<br>SQK: ${esc(squawk)}`:'');
-if(aircraftMarkers[icao]){
-const am=aircraftMarkers[icao];
+const hdg=a.track||a.true_heading||a.mag_heading||0;
+const alt=typeof a.alt_baro==='number'?a.alt_baro:(a.alt_geom||0);
+const vel=a.gs||0;
+const vRate=a.baro_rate||a.geom_rate||null;
+const callsign=(a.flight||'').trim();
+const acType=a.t||'';
+const reg=a.r||'';
+const cat=a.category||'';
+const catKey=cat.startsWith('A')?(parseInt(cat[1])||0):cat.startsWith('B')?8:cat.startsWith('C')?14:0;
+const mappedCat=catKey>=4&&catKey<=7?4:catKey>=2&&catKey<=3?catKey:catKey===8?8:catKey===14?14:0;
+const catInfo=getAircraftCatInfo(mappedCat);
+const mach=a.mach?'M'+a.mach.toFixed(2):'';
+const popupContent='<strong style="font-size:.88rem">'+esc(callsign||hex)+'</strong>'+
+(acType?' <span style="color:var(--accent);font-weight:700">'+esc(acType)+'</span>':'')+
+(reg?' <span style="color:var(--text-sec)">'+esc(reg)+'</span>':'')+'<br>'+
+'<span style="color:var(--accent)">'+catInfo.label+'</span><br>'+
+'ALT: <strong>'+(typeof alt==='number'?alt.toLocaleString():'?')+' ft</strong> ('+(typeof alt==='number'?Math.round(alt*0.3048).toLocaleString():'?')+' m)<br>'+
+'GS: <strong>'+Math.round(vel)+' kts</strong> ('+Math.round(vel*1.852)+' km/h) '+esc(mach)+'<br>'+
+'HDG: '+Math.round(hdg)+'°'+(a.ias?' | IAS '+Math.round(a.ias)+' kts':'')+'<br>'+
+(vRate!=null?'V/S: '+(vRate>0?'+':'')+Math.round(vRate)+' ft/min<br>':'')+
+(a.squawk?'SQK: '+esc(a.squawk)+'<br>':'')+
+(a.oat!=null?'OAT: '+a.oat+'°C':'');
+if(aircraftMarkers[hex]){
+const am=aircraftMarkers[hex];
 am.marker.setLatLng(newPos);
-am.marker.getElement()?.querySelector('.ac-rot')?.style?.setProperty('transform',`rotate(${hdg}deg)`);
+am.marker.getElement()?.querySelector('.ac-rot')?.style?.setProperty('transform','rotate('+hdg+'deg)');
 am.marker.setPopupContent(popupContent);
 am.positions.push(newPos);
 if(am.positions.length>30)am.positions.shift();
@@ -2725,25 +2733,23 @@ if(am.positions.length>1){am.trail=L.polyline(am.positions,{weight:1.5,opacity:0
 }else{
 const sz=catInfo.size;
 const icon=L.divIcon({className:'aircraft-icon',
-html:`<div class="ac-rot" style="transform:rotate(${hdg}deg);display:inline-block">${catInfo.svg}</div>`,
+html:'<div class="ac-rot" style="transform:rotate('+hdg+'deg);display:inline-block">'+catInfo.svg+'</div>',
 iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
-const marker=L.marker(newPos,{icon}).addTo(igAircraft)
-.bindPopup(popupContent);
-aircraftMarkers[icao]={marker,trail:null,positions:[newPos],cat:catNum};
+const marker=L.marker(newPos,{icon}).addTo(igAircraft).bindPopup(popupContent,{maxWidth:320});
+aircraftMarkers[hex]={marker,trail:null,positions:[newPos]};
 }
 });
 intelCounts.aircraft=validCount;
-// Remove aircraft no longer in feed
-Object.keys(aircraftMarkers).forEach(icao=>{
-if(!seenIcaos.has(icao)){
-igAircraft.removeLayer(aircraftMarkers[icao].marker);
-if(aircraftMarkers[icao].trail)igAircraft.removeLayer(aircraftMarkers[icao].trail);
-delete aircraftMarkers[icao];
+Object.keys(aircraftMarkers).forEach(hex=>{
+if(!seenHex.has(hex)){
+igAircraft.removeLayer(aircraftMarkers[hex].marker);
+if(aircraftMarkers[hex].trail)igAircraft.removeLayer(aircraftMarkers[hex].trail);
+delete aircraftMarkers[hex];
 }
 });
 if(document.getElementById('layerAircraft')?.checked&&!window.mapInstance.hasLayer(igAircraft))igAircraft.addTo(window.mapInstance);
 updateIntelCounter();
-console.log('[AIR] '+validCount+' aircraft tracked over Europe');
+console.log('[AIR] '+validCount+' aircraft tracked (adsb.lol)');
 }catch(e){console.warn('[AIR] Aircraft fetch failed:',e);}
 }
 
