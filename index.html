@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="light">
+<html lang="fr" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -318,6 +318,22 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 .aq-widget h4{font-size:.68rem;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:.5rem;font-weight:700}
 .aq-bar{height:8px;border-radius:4px;margin:.4rem 0}
 .aq-details{display:grid;grid-template-columns:1fr 1fr;gap:.3rem;font-size:.72rem}
+/* ALERT STATE */
+.alert-state{display:flex;align-items:center;gap:.4rem;padding:.3rem .7rem;border-radius:var(--radius);cursor:pointer;border:1px solid var(--border);font-family:'JetBrains Mono',monospace}
+.alert-dot{width:8px;height:8px;border-radius:50%;animation:alertPulse 2s infinite;flex-shrink:0}
+@keyframes alertPulse{0%,100%{opacity:1}50%{opacity:.4}}
+.alert-state[data-level="0"]{border-color:#22C55E}.alert-state[data-level="0"] .alert-dot{background:#22C55E}
+.alert-state[data-level="1"]{border-color:#3B82F6}.alert-state[data-level="1"] .alert-dot{background:#3B82F6}
+.alert-state[data-level="2"]{border-color:#EAB308}.alert-state[data-level="2"] .alert-dot{background:#EAB308}
+.alert-state[data-level="3"]{border-color:#F97316}.alert-state[data-level="3"] .alert-dot{background:#F97316}
+.alert-state[data-level="4"]{border-color:#EF4444}.alert-state[data-level="4"] .alert-dot{background:#EF4444;animation:alertPulse .5s infinite}
+/* MAP HUD */
+.map-hud{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;gap:1.5rem;background:rgba(12,17,23,.8);backdrop-filter:blur(4px);border:1px solid rgba(200,164,78,.15);border-radius:var(--radius);padding:.3rem .8rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--accent);letter-spacing:.5px;pointer-events:none}
+/* MEASURE BUTTON ACTIVE */
+.btn-outline.active{border-color:var(--accent);color:var(--accent);background:rgba(200,164,78,.08)}
+/* MEASURE POPUP */
+.measure-popup .leaflet-popup-content-wrapper{background:var(--tactical-800);border:1px solid rgba(200,164,78,.3);color:#fff;font-family:'JetBrains Mono',monospace}
+.measure-popup .leaflet-popup-tip{background:var(--tactical-800)}
 </style>
 </head>
 <body>
@@ -373,6 +389,14 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 <header class="topbar" id="topbar">
 <button class="hamburger" onclick="toggleSidebar()">&#9776;</button>
 <span class="page-title" id="pageTitle"></span>
+<div id="zuluClock" style="font-family:'JetBrains Mono',monospace;font-size:.72rem;line-height:1.3;text-align:center;min-width:140px">
+  <div id="zuluTime" style="color:var(--accent);font-weight:700;letter-spacing:1px"></div>
+  <div id="localTime" style="color:var(--text-sec);font-size:.62rem"></div>
+</div>
+<div id="alertState" class="alert-state" onclick="cycleAlertState()" title="NATO Alert State">
+  <span id="alertDot" class="alert-dot"></span>
+  <span id="alertLabel" style="font-size:.68rem;font-weight:700;letter-spacing:1px"></span>
+</div>
 <div class="search-wrap">
 <input type="search" class="topbar-search" id="globalSearch" placeholder="Rechercher..." autocomplete="off">
 <div class="search-results" id="searchResults"></div>
@@ -397,6 +421,7 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 <section id="page-deployments" class="page"></section>
 <section id="page-calendar" class="page"></section>
 <section id="page-map" class="page"></section>
+<section id="page-ops" class="page"></section>
 <section id="page-settings" class="page"></section>
 <section id="page-api" class="page"></section>
 </div>
@@ -526,7 +551,9 @@ tak_note:'Configurez votre serveur TAK pour partager les données en temps réel
 air_quality:'Qualité de l\'air',live_intel:'Renseignement en direct',layers:'Couches',
 aircraft:'Aéronefs',satellites:'Satellites',earthquakes:'Séismes',active_fires:'Feux actifs',
 ships:'Navires',radar:'Radar météo',total_tracks:'Pistes totales',
-trains:'Trains',helicopters:'Hélicoptères',drones:'Drones',heavy_aircraft:'Gros porteurs',light_aircraft:'Aviation légère',glider:'Planeur'
+trains:'Trains',helicopters:'Hélicoptères',drones:'Drones',heavy_aircraft:'Gros porteurs',light_aircraft:'Aviation légère',glider:'Planeur',
+ops:'Opérations',sitrep:'SITREP',contact_report:'CONTACT',medevac:'MEDEVAC',spotrep:'SPOTREP',
+measure:'Mesurer',clear:'Effacer',alert_state:'État d\'alerte',zulu_time:'Heure Zulu',copy_clipboard:'Copier'
 },nl:{
 dashboard:'Dashboard',personnel:'Personeel',certifications:'Certificeringen',
 alerts:'Waarschuwingen',reports:'Rapporten',deployments:'Inzetten',settings:'Instellingen',
@@ -610,7 +637,9 @@ tak_note:'Configureer uw TAK-server om realtime gegevens te delen met ATAK/iTAK.
 air_quality:'Luchtkwaliteit',live_intel:'Live inlichtingen',layers:'Lagen',
 aircraft:'Vliegtuigen',satellites:'Satellieten',earthquakes:'Aardbevingen',active_fires:'Actieve branden',
 ships:'Schepen',radar:'Weerradar',total_tracks:'Totaal tracks',
-trains:'Treinen',helicopters:'Helikopters',drones:'Drones',heavy_aircraft:'Groot vliegtuig',light_aircraft:'Lichte luchtvaart',glider:'Zweefvliegtuig'
+trains:'Treinen',helicopters:'Helikopters',drones:'Drones',heavy_aircraft:'Groot vliegtuig',light_aircraft:'Lichte luchtvaart',glider:'Zweefvliegtuig',
+ops:'Operaties',sitrep:'SITREP',contact_report:'CONTACT',medevac:'MEDEVAC',spotrep:'SPOTREP',
+measure:'Meten',clear:'Wissen',alert_state:'Alarmstatus',zulu_time:'Zulu tijd',copy_clipboard:'Kopiëren'
 },en:{
 dashboard:'Dashboard',personnel:'Personnel',certifications:'Certifications',
 alerts:'Alerts',reports:'Reports',deployments:'Deployments',settings:'Settings',
@@ -694,7 +723,9 @@ tak_note:'Configure your TAK Server to share real-time data with ATAK/iTAK.',
 air_quality:'Air Quality',live_intel:'Live Intelligence',layers:'Layers',
 aircraft:'Aircraft',satellites:'Satellites',earthquakes:'Earthquakes',active_fires:'Active Fires',
 ships:'Ships',radar:'Weather Radar',total_tracks:'Total Tracks',
-trains:'Trains',helicopters:'Helicopters',drones:'Drones',heavy_aircraft:'Heavy Aircraft',light_aircraft:'Light Aircraft',glider:'Glider'
+trains:'Trains',helicopters:'Helicopters',drones:'Drones',heavy_aircraft:'Heavy Aircraft',light_aircraft:'Light Aircraft',glider:'Glider',
+ops:'Operations',sitrep:'SITREP',contact_report:'CONTACT',medevac:'MEDEVAC',spotrep:'SPOTREP',
+measure:'Measure',clear:'Clear',alert_state:'Alert State',zulu_time:'Zulu Time',copy_clipboard:'Copy'
 }};
 function t(k){return T[currentLang]?.[k]||T.fr[k]||k}
 function rankLabel(id){const r=RANKS.find(x=>x.id===id);return r?r[currentLang]||r.fr:id||''}
@@ -795,9 +826,10 @@ deployments:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
 reports:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>',
 calendar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
 map:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>',
-settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>'
+settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
+ops:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0112 2a8 8 0 018 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>'
 };
-const NAV_PAGES=['dashboard','personnel','certifications','alerts','deployments','reports','calendar','map','settings'];
+const NAV_PAGES=['dashboard','personnel','certifications','alerts','deployments','reports','calendar','map','ops','settings'];
 function buildNav(){
 let h='';NAV_PAGES.forEach(p=>{h+=`<button class="nav-item${p===currentPage?' active':''}" onclick="navigateTo('${p}')">${NAV_ICONS[p]}<span>${t(p)}</span></button>`});
 document.getElementById('navItems').innerHTML=h;
@@ -855,7 +887,7 @@ else if(diff<=30)c.status='expiring';
 else c.status='valid';
 });
 }
-function renderAll(){renderDashboard();renderPersonnel();renderCertMatrix();renderAlerts();renderDeployments();renderReports();renderCalendar();renderMap();renderSettings();renderAPIPage();updateNotifications()}
+function renderAll(){renderDashboard();renderPersonnel();renderCertMatrix();renderAlerts();renderDeployments();renderReports();renderCalendar();renderMap();renderOps();renderSettings();renderAPIPage();updateNotifications()}
 
 /* ===== DASHBOARD ===== */
 function renderDashboard(){
@@ -2350,7 +2382,11 @@ intelCounts.units=appUnits.length;
 intelCounts.deployments=appDeployments.filter(d=>d.status==='active'||d.status==='planned').length;
 
 el.innerHTML=`
-<div style="display:grid;grid-template-columns:1fr 280px;gap:.75rem;height:calc(100vh - var(--topbar-h) - 3rem)">
+<div style="display:flex;gap:.5rem;margin-bottom:.5rem">
+  <button class="btn btn-outline btn-sm" id="measureBtn" onclick="toggleMeasure()">&#9646; ${t('measure')}</button>
+  <button class="btn btn-outline btn-sm" onclick="clearMeasure()">&#10005; ${t('clear')}</button>
+</div>
+<div style="display:grid;grid-template-columns:1fr 280px;gap:.75rem;height:calc(100vh - var(--topbar-h) - 3rem - 42px)">
   <div style="position:relative;min-height:400px">
     <div class="intel-counter" id="intelCounter"></div>
     <div id="tacticalMap" style="height:100%;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border)"></div>
@@ -2425,6 +2461,40 @@ const coords=DEPLOY_COORDS[d.location]||DEPLOY_COORDS['default'];
 if(coords[0]===0)return;
 const color=d.status==='active'?'#22C55E':'#3B82F6';
 L.circleMarker(coords,{radius:8,fillColor:color,color:'#fff',weight:2,fillOpacity:0.8}).addTo(igDeploy).bindPopup(`<strong>${esc(d.mission_name)}</strong><br>${esc(d.location||'')}<br>${deployBadge(d.status)}`);
+});
+
+/* --- HUD overlay --- */
+const hudDiv=document.createElement('div');hudDiv.id='mapHud';hudDiv.className='map-hud';
+document.getElementById('tacticalMap')?.appendChild(hudDiv);
+window.mapInstance.on('mousemove',function(e){
+  const lat=e.latlng.lat.toFixed(5);const lng=e.latlng.lng.toFixed(5);
+  const latDir=e.latlng.lat>=0?'N':'S';const lngDir=e.latlng.lng>=0?'E':'W';
+  const mgrsApprox=`${latDir}${Math.abs(e.latlng.lat).toFixed(3)} ${lngDir}${Math.abs(e.latlng.lng).toFixed(3)}`;
+  const gsd=Math.round(156543.03*Math.cos(e.latlng.lat*Math.PI/180)/Math.pow(2,window.mapInstance.getZoom()));
+  const hud=document.getElementById('mapHud');
+  if(hud)hud.innerHTML=`<span>${mgrsApprox}</span><span>ZOOM ${window.mapInstance.getZoom()}</span><span>GSD ${gsd} m/px</span>`;
+});
+
+/* --- Measurement tool --- */
+window.mapInstance.on('click',function(e){
+  if(!measureMode)return;
+  measurePoints.push(e.latlng);
+  const m=L.circleMarker(e.latlng,{radius:4,fillColor:'#FF1744',color:'#fff',weight:2,fillOpacity:1}).addTo(window.mapInstance);
+  measureMarkers.push(m);
+  if(measurePoints.length===2){
+    const[p1,p2]=measurePoints;
+    const dist=p1.distanceTo(p2);
+    const bearing=getBearing(p1.lat,p1.lng,p2.lat,p2.lng);
+    measureLine=L.polyline([p1,p2],{color:'#FF1744',weight:2,dashArray:'8 4'}).addTo(window.mapInstance);
+    const mid=L.latLng((p1.lat+p2.lat)/2,(p1.lng+p2.lng)/2);
+    const label=dist>1000?`${(dist/1000).toFixed(2)} km`:`${Math.round(dist)} m`;
+    L.popup({closeButton:true,className:'measure-popup'}).setLatLng(mid)
+      .setContent(`<strong style="font-family:'JetBrains Mono',monospace;font-size:.8rem">${label}<br>BRG ${Math.round(bearing)}&deg;</strong>`)
+      .openOn(window.mapInstance);
+    measureMode=false;
+    document.getElementById('measureBtn')?.classList.remove('active');
+    window.mapInstance.getContainer().style.cursor='';
+  }
 });
 
 /* add checked layers to map */
@@ -2848,12 +2918,249 @@ if(wEl)wEl.innerHTML=`<p style="color:var(--text-sec)">${t('weather')}: offline<
 }
 }
 
+/* ===== ZULU CLOCK ===== */
+function updateZuluClock(){
+  const now=new Date();
+  const months=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const d=String(now.getUTCDate()).padStart(2,'0');
+  const m=months[now.getUTCMonth()];
+  const y=now.getUTCFullYear();
+  const h=String(now.getUTCHours()).padStart(2,'0');
+  const min=String(now.getUTCMinutes()).padStart(2,'0');
+  const s=String(now.getUTCSeconds()).padStart(2,'0');
+  const zuluEl=document.getElementById('zuluTime');
+  const localEl=document.getElementById('localTime');
+  if(zuluEl)zuluEl.textContent=`${d}${m}${y} ${h}:${min}:${s}Z`;
+  if(localEl)localEl.textContent=`LOCAL ${now.toLocaleTimeString('en-GB')}`;
+}
+
+/* ===== NATO ALERT STATE ===== */
+const ALERT_STATES=[
+  {level:0,name:'NORMAL',color:'#22C55E'},
+  {level:1,name:'ALPHA',color:'#3B82F6'},
+  {level:2,name:'BRAVO',color:'#EAB308'},
+  {level:3,name:'CHARLIE',color:'#F97316'},
+  {level:4,name:'DELTA',color:'#EF4444'}
+];
+let currentAlertLevel=0;
+function setAlertState(level){
+  currentAlertLevel=level;
+  const state=ALERT_STATES[level];
+  const el=document.getElementById('alertState');
+  if(!el)return;
+  el.dataset.level=level;
+  document.getElementById('alertLabel').textContent=state.name;
+  localStorage.setItem('dur_alert',level);
+}
+function cycleAlertState(){setAlertState((currentAlertLevel+1)%5)}
+
+/* ===== MEASUREMENT TOOL ===== */
+let measureMode=false;
+let measurePoints=[];
+let measureLine=null;
+let measureMarkers=[];
+function toggleMeasure(){
+  measureMode=!measureMode;
+  document.getElementById('measureBtn')?.classList.toggle('active',measureMode);
+  if(!measureMode){clearMeasure();}
+  else{if(window.mapInstance)window.mapInstance.getContainer().style.cursor='crosshair';}
+}
+function clearMeasure(){
+  measurePoints=[];
+  if(measureLine&&window.mapInstance){window.mapInstance.removeLayer(measureLine);measureLine=null;}
+  measureMarkers.forEach(m=>{if(window.mapInstance)window.mapInstance.removeLayer(m)});
+  measureMarkers=[];
+  if(window.mapInstance)window.mapInstance.getContainer().style.cursor='';
+}
+function getBearing(lat1,lon1,lat2,lon2){
+  const dLon=(lon2-lon1)*Math.PI/180;
+  const y=Math.sin(dLon)*Math.cos(lat2*Math.PI/180);
+  const x=Math.cos(lat1*Math.PI/180)*Math.sin(lat2*Math.PI/180)-Math.sin(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.cos(dLon);
+  return((Math.atan2(y,x)*180/Math.PI)+360)%360;
+}
+
+/* ===== OPERATIONS PAGE ===== */
+function formatZulu(d){
+  const months=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  return`${String(d.getUTCDate()).padStart(2,'0')}${String(d.getUTCHours()).padStart(2,'0')}${String(d.getUTCMinutes()).padStart(2,'0')}Z ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+function renderOps(){
+  const el=document.getElementById('page-ops');if(!el)return;
+  const now=new Date();
+  const zulu=formatZulu(now);
+  const total=appPersonnel.length;
+  const apte=appPersonnel.filter(p=>p.status==='apte').length;
+  const mission=appPersonnel.filter(p=>p.status==='en_mission').length;
+  const inapte=appPersonnel.filter(p=>p.status==='inapte_temp'||p.status==='inapte_def').length;
+  const expCerts=appCerts.filter(c=>c.status==='expired').length;
+  const rate=total?Math.round(apte/total*100):0;
+
+  let h=`<div class="tabs">
+    <button class="tab active" onclick="switchOpsTab(this,'opsSitrep')">SITREP</button>
+    <button class="tab" onclick="switchOpsTab(this,'opsContact')">CONTACT</button>
+    <button class="tab" onclick="switchOpsTab(this,'opsMedevac')">MEDEVAC 9-LINE</button>
+    <button class="tab" onclick="switchOpsTab(this,'opsSpot')">SPOTREP</button>
+  </div>`;
+
+  // SITREP
+  h+=`<div class="tab-content active" id="opsSitrep"><div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <h3 style="font-size:.85rem;text-transform:uppercase;letter-spacing:1px">SITUATION REPORT</h3>
+      <button class="btn btn-primary btn-sm" onclick="copySitrep()">&#9997; COPY TO CLIPBOARD</button>
+    </div>
+    <pre id="sitrepContent" style="font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.8;white-space:pre-wrap;color:var(--text);background:var(--bg);padding:1rem;border-radius:var(--radius);border:1px solid var(--border)">CLASSIFICATION: UNCLASSIFIED
+DTG: ${zulu}
+FROM: DURENDAL FORCE TRACKER
+TO: HIGHER HQ
+
+SUBJECT: DAILY SITREP
+
+1. SITUATION
+   a. Enemy Forces: No change / See INTSUM
+   b. Friendly Forces: ${total} personnel tracked across ${appUnits.length} units
+   c. Environment: See weather panel
+
+2. MISSION
+   Current operational readiness assessment.
+
+3. EXECUTION
+   a. Operations: ${mission} personnel currently deployed
+   b. Readiness Rate: ${rate}% (${apte}/${total} combat-ready)
+   c. Non-deployable: ${inapte} personnel (medical/admin)
+
+4. SUSTAINMENT
+   a. Personnel Status:
+      - Apte:       ${String(apte).padStart(4)}
+      - En mission: ${String(mission).padStart(4)}
+      - En formation: ${String(appPersonnel.filter(p=>p.status==='en_formation').length).padStart(2)}
+      - En conge:   ${String(appPersonnel.filter(p=>p.status==='en_conge').length).padStart(4)}
+      - Inapte:     ${String(inapte).padStart(4)}
+   b. Certification Status:
+      - Valid:         ${String(appCerts.filter(c=>c.status==='valid').length).padStart(4)}
+      - Expiring (30d):${String(appCerts.filter(c=>c.status==='expiring').length).padStart(4)}
+      - Expired:       ${String(expCerts).padStart(4)}
+   c. Active Deployments: ${appDeployments.filter(d=>d.status==='active').length}
+
+5. COMMAND AND SIGNAL
+   a. Command: No change
+   b. Signal: DURENDAL C2 system operational
+
+AUTHENTICATION: AUTO-GENERATED BY DURENDAL
+DTG SIGNED: ${zulu}</pre>
+  </div></div>`;
+
+  // CONTACT REPORT
+  h+=`<div class="tab-content" id="opsContact"><div class="card">
+    <h3 style="font-size:.85rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:1rem">CONTACT REPORT</h3>
+    <div class="form-row">
+      <div class="form-group"><label>DTG (Date-Time Group)</label><input id="crDtg" value="${esc(zulu)}"></div>
+      <div class="form-group"><label>UNIT REPORTING</label><input id="crUnit" placeholder="e.g., 1 Pl Cie A"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>GRID REFERENCE</label><input id="crGrid" placeholder="e.g., 31UDS 8432 1567"></div>
+      <div class="form-group"><label>ENEMY SIZE</label><select id="crSize"><option>Individual</option><option>Fire Team (2-4)</option><option>Squad (8-13)</option><option>Platoon (30-50)</option><option>Company (100-200)</option><option>Battalion (300-1000)</option><option>Unknown</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>ACTIVITY</label><select id="crActivity"><option>Attacking</option><option>Defending</option><option>Moving</option><option>Stationary</option><option>Observing</option><option>IED/Mine</option><option>Indirect Fire</option><option>Unknown</option></select></div>
+      <div class="form-group"><label>DIRECTION OF MOVEMENT</label><select id="crDir"><option>N</option><option>NE</option><option>E</option><option>SE</option><option>S</option><option>SW</option><option>W</option><option>NW</option><option>Stationary</option><option>Unknown</option></select></div>
+    </div>
+    <div class="form-group"><label>ADDITIONAL INFO</label><textarea id="crInfo" rows="3" placeholder="Weapons, equipment, markings..."></textarea></div>
+    <div style="display:flex;gap:.5rem;margin-top:1rem">
+      <button class="btn btn-primary btn-sm" onclick="copyContactReport()">&#9997; COPY TO CLIPBOARD</button>
+      <button class="btn btn-outline btn-sm" onclick="logContactReport()">LOG &amp; SAVE</button>
+    </div>
+  </div></div>`;
+
+  // MEDEVAC 9-LINER
+  h+=`<div class="tab-content" id="opsMedevac"><div class="card">
+    <h3 style="font-size:.85rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:1rem">MEDEVAC REQUEST (9-LINE)</h3>
+    <div class="form-group"><label>LINE 1 — LOCATION (Grid/Coords)</label><input id="med1" placeholder="31UDS 8432 1567"></div>
+    <div class="form-group"><label>LINE 2 — CALLSIGN &amp; FREQUENCY</label><input id="med2" placeholder="DUSTOFF 1 / 34.750 MHz"></div>
+    <div class="form-group"><label>LINE 3 — # PATIENTS BY PRECEDENCE</label>
+      <div class="form-row"><input id="med3a" placeholder="Urgent"><input id="med3b" placeholder="Priority"><input id="med3c" placeholder="Routine"></div></div>
+    <div class="form-group"><label>LINE 4 — SPECIAL EQUIPMENT</label><select id="med4"><option>None</option><option>Hoist</option><option>Extraction Equipment</option><option>Ventilator</option></select></div>
+    <div class="form-group"><label>LINE 5 — # PATIENTS BY TYPE</label>
+      <div class="form-row"><input id="med5a" placeholder="Litter"><input id="med5b" placeholder="Ambulatory"></div></div>
+    <div class="form-group"><label>LINE 6 — SECURITY AT PICKUP SITE</label><select id="med6"><option>No enemy troops in area</option><option>Possible enemy troops — approach with caution</option><option>Enemy troops in area — armed escort required</option><option>Enemy troops in area — armed escort required (hot LZ)</option></select></div>
+    <div class="form-group"><label>LINE 7 — METHOD OF MARKING PICKUP SITE</label><select id="med7"><option>Panels</option><option>Pyrotechnic signal</option><option>Smoke signal — color to be given at time of contact</option><option>None</option><option>Other</option></select></div>
+    <div class="form-group"><label>LINE 8 — PATIENT NATIONALITY &amp; STATUS</label><select id="med8"><option>Belgian military</option><option>Allied military</option><option>Non-military (civilian)</option><option>Enemy prisoner of war (EPW)</option></select></div>
+    <div class="form-group"><label>LINE 9 — NBC CONTAMINATION / TERRAIN / OBSTACLES</label><textarea id="med9" rows="2" placeholder="e.g., N — no NBC. Open field, no obstacles, wind from SW at 10 km/h"></textarea></div>
+    <div style="display:flex;gap:.5rem;margin-top:1rem">
+      <button class="btn btn-danger btn-sm" onclick="copyMedevac()">&#9997; COPY 9-LINE</button>
+      <button class="btn btn-outline btn-sm" onclick="logMedevac()">LOG &amp; SAVE</button>
+    </div>
+  </div></div>`;
+
+  // SPOTREP (SALUTE)
+  h+=`<div class="tab-content" id="opsSpot"><div class="card">
+    <h3 style="font-size:.85rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:1rem">SPOT REPORT (SALUTE)</h3>
+    <div class="form-group"><label>S — SIZE</label><input id="spotS" placeholder="e.g., 3 individuals / 2 vehicles"></div>
+    <div class="form-group"><label>A — ACTIVITY</label><input id="spotA" placeholder="e.g., Emplacing IED / Moving NE"></div>
+    <div class="form-group"><label>L — LOCATION</label><input id="spotL" placeholder="Grid reference or description"></div>
+    <div class="form-group"><label>U — UNIT / UNIFORM</label><input id="spotU" placeholder="e.g., Civilian clothes, dark jackets"></div>
+    <div class="form-group"><label>T — TIME</label><input id="spotT" value="${esc(zulu)}"></div>
+    <div class="form-group"><label>E — EQUIPMENT</label><input id="spotE" placeholder="e.g., 2x AK-47, 1x RPG, white Toyota pickup"></div>
+    <div style="display:flex;gap:.5rem;margin-top:1rem">
+      <button class="btn btn-primary btn-sm" onclick="copySpotRep()">&#9997; COPY SPOTREP</button>
+      <button class="btn btn-outline btn-sm" onclick="logSpotRep()">LOG &amp; SAVE</button>
+    </div>
+  </div></div>`;
+
+  el.innerHTML=h;
+}
+
+function switchOpsTab(btn,tabId){
+  btn.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  btn.parentElement.parentElement.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById(tabId)?.classList.add('active');
+}
+
+function copySitrep(){
+  navigator.clipboard.writeText(document.getElementById('sitrepContent')?.textContent||'');
+  showToast('SITREP copied','success');
+}
+function copyContactReport(){
+  const txt=`CONTACT REPORT\nDTG: ${document.getElementById('crDtg')?.value||''}\nUNIT: ${document.getElementById('crUnit')?.value||''}\nGRID: ${document.getElementById('crGrid')?.value||''}\nSIZE: ${document.getElementById('crSize')?.value||''}\nACTIVITY: ${document.getElementById('crActivity')?.value||''}\nDIRECTION: ${document.getElementById('crDir')?.value||''}\nINFO: ${document.getElementById('crInfo')?.value||''}`;
+  navigator.clipboard.writeText(txt);
+  showToast('CONTACT report copied','success');
+}
+function copyMedevac(){
+  const l1=document.getElementById('med1')?.value||'';
+  const l2=document.getElementById('med2')?.value||'';
+  const l3=`U:${document.getElementById('med3a')?.value||0} P:${document.getElementById('med3b')?.value||0} R:${document.getElementById('med3c')?.value||0}`;
+  const l4=document.getElementById('med4')?.value||'';
+  const l5=`L:${document.getElementById('med5a')?.value||0} A:${document.getElementById('med5b')?.value||0}`;
+  const l6=document.getElementById('med6')?.value||'';
+  const l7=document.getElementById('med7')?.value||'';
+  const l8=document.getElementById('med8')?.value||'';
+  const l9=document.getElementById('med9')?.value||'';
+  const txt=`MEDEVAC 9-LINE REQUEST\nLINE 1 (LOCATION): ${l1}\nLINE 2 (CALLSIGN/FREQ): ${l2}\nLINE 3 (# PATIENTS): ${l3}\nLINE 4 (SPECIAL EQUIP): ${l4}\nLINE 5 (# BY TYPE): ${l5}\nLINE 6 (SECURITY): ${l6}\nLINE 7 (MARKING): ${l7}\nLINE 8 (NATIONALITY): ${l8}\nLINE 9 (NBC/TERRAIN): ${l9}`;
+  navigator.clipboard.writeText(txt);
+  showToast('MEDEVAC 9-LINE copied','success');
+}
+function copySpotRep(){
+  const txt=`SPOTREP (SALUTE)\nS - SIZE:      ${document.getElementById('spotS')?.value||''}\nA - ACTIVITY:  ${document.getElementById('spotA')?.value||''}\nL - LOCATION:  ${document.getElementById('spotL')?.value||''}\nU - UNIT/UNIF: ${document.getElementById('spotU')?.value||''}\nT - TIME:      ${document.getElementById('spotT')?.value||''}\nE - EQUIPMENT: ${document.getElementById('spotE')?.value||''}`;
+  navigator.clipboard.writeText(txt);
+  showToast('SPOTREP copied','success');
+}
+function logContactReport(){copyContactReport();logAudit('contact_report','ops',null,document.getElementById('crGrid')?.value||'');showToast('CONTACT logged','success')}
+function logMedevac(){copyMedevac();logAudit('medevac_request','ops',null,document.getElementById('med1')?.value||'');showToast('MEDEVAC logged','success')}
+function logSpotRep(){copySpotRep();logAudit('spotrep','ops',null,document.getElementById('spotL')?.value||'');showToast('SPOTREP logged','success')}
+
 /* ===== GLOBAL EVENTS ===== */
 document.addEventListener('DOMContentLoaded',()=>{
-// Theme
-const savedTheme=localStorage.getItem('bf_theme')||'light';
+// Theme — force dark as military default
+const savedTheme=localStorage.getItem('bf_theme')||'dark';
 document.documentElement.dataset.theme=savedTheme;
 document.getElementById('themeBtn').innerHTML=savedTheme==='dark'?'&#9788;':'&#9790;';
+// Zulu clock
+setInterval(updateZuluClock,1000);
+updateZuluClock();
+// NATO alert state
+const savedAlert=parseInt(localStorage.getItem('dur_alert')||'0');
+setAlertState(isNaN(savedAlert)?0:Math.min(Math.max(savedAlert,0),4));
 // Initial connection status
 {const dot=document.getElementById('connDot');const lbl=document.getElementById('connLabel');if(dot){dot.className='conn-dot '+(navigator.onLine?'online':'offline')}if(lbl){lbl.textContent=navigator.onLine?'Online':'Offline'}}
 // Session
