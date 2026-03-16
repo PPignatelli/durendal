@@ -329,6 +329,9 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 .alert-state[data-level="4"]{border-color:#EF4444}.alert-state[data-level="4"] .alert-dot{background:#EF4444;animation:alertPulse .5s infinite}
 /* MAP HUD */
 .map-hud{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;gap:1.5rem;background:rgba(12,17,23,.8);backdrop-filter:blur(4px);border:1px solid rgba(200,164,78,.15);border-radius:var(--radius);padding:.3rem .8rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--accent);letter-spacing:.5px;pointer-events:none}
+/* INTEL COUNTER FLASH */
+.ic-flash{animation:icFlash .3s}
+@keyframes icFlash{0%{background:rgba(200,164,78,.15)}100%{background:transparent}}
 /* MEASURE BUTTON ACTIVE */
 .btn-outline.active{border-color:var(--accent);color:var(--accent);background:rgba(200,164,78,.08)}
 /* MEASURE POPUP */
@@ -2466,13 +2469,23 @@ L.circleMarker(coords,{radius:8,fillColor:color,color:'#fff',weight:2,fillOpacit
 /* --- HUD overlay --- */
 const hudDiv=document.createElement('div');hudDiv.id='mapHud';hudDiv.className='map-hud';
 document.getElementById('tacticalMap')?.appendChild(hudDiv);
+function ddToDMS(dd,isLat){
+  const dir=dd>=0?(isLat?'N':'E'):(isLat?'S':'W');
+  const abs=Math.abs(dd);
+  const d=Math.floor(abs);
+  const mFull=(abs-d)*60;
+  const m=Math.floor(mFull);
+  const s=((mFull-m)*60).toFixed(1);
+  return `${d}°${String(m).padStart(2,'0')}'${String(s).padStart(4,'0')}"${dir}`;
+}
 window.mapInstance.on('mousemove',function(e){
-  const lat=e.latlng.lat.toFixed(5);const lng=e.latlng.lng.toFixed(5);
-  const latDir=e.latlng.lat>=0?'N':'S';const lngDir=e.latlng.lng>=0?'E':'W';
-  const mgrsApprox=`${latDir}${Math.abs(e.latlng.lat).toFixed(3)} ${lngDir}${Math.abs(e.latlng.lng).toFixed(3)}`;
-  const gsd=Math.round(156543.03*Math.cos(e.latlng.lat*Math.PI/180)/Math.pow(2,window.mapInstance.getZoom()));
+  const latDMS=ddToDMS(e.latlng.lat,true);
+  const lngDMS=ddToDMS(e.latlng.lng,false);
   const hud=document.getElementById('mapHud');
-  if(hud)hud.innerHTML=`<span>${mgrsApprox}</span><span>ZOOM ${window.mapInstance.getZoom()}</span><span>GSD ${gsd} m/px</span>`;
+  if(hud)hud.innerHTML=
+    `<span>${latDMS} ${lngDMS}</span>` +
+    `<span>DD: ${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}</span>` +
+    `<span>Z${window.mapInstance.getZoom()}</span>`;
 });
 
 /* --- Measurement tool --- */
@@ -2573,6 +2586,10 @@ el.innerHTML=`
 <div style="border-top:1px solid rgba(200,164,78,.2);margin-top:.3rem;padding-top:.3rem">
 <div class="ic-row"><span>${t('total_tracks')}</span><span class="ic-val" style="font-size:.85rem">${total}</span></div>
 </div>`;
+el.classList.remove('ic-flash');
+void el.offsetWidth; // force reflow to restart animation
+el.classList.add('ic-flash');
+setTimeout(()=>el.classList.remove('ic-flash'),300);
 }
 
 /* === Aircraft (OpenSky Network) — smooth animation + trails, Europe-wide === */
@@ -2607,21 +2624,31 @@ if(!d.states){intelCounts.aircraft=0;updateIntelCounter();return;}
 const seenIcaos=new Set();
 let validCount=0;
 d.states.forEach(s=>{
-const [icao,callsign,country,,, lon,lat,alt,,onGround,vel,heading,,,,, cat]=s;
+const icao=s[0], callsign=s[1], country=s[2], lon=s[5], lat=s[6], alt=s[7]||s[13]||0, onGround=s[8], vel=s[9], heading=s[10], vRate=s[11], geoAlt=s[13], squawk=s[14], cat=s[17];
 if(lat==null||lon==null)return;
+if(onGround) return; // Skip aircraft on ground — they clutter the map
 validCount++;
 seenIcaos.add(icao);
 const newPos=[lat,lon];
 const hdg=heading||0;
 const catNum=typeof cat==='number'?cat:0;
 const catInfo=getAircraftCatInfo(catNum);
+const popupContent=
+  `<strong>${esc((callsign||'').trim()||icao)}</strong><br>` +
+  `${esc(country||'')}<br>` +
+  `<span style="color:var(--accent)">${catInfo.label}</span><br>` +
+  `ALT: ${Math.round(alt)} m (${Math.round(alt*3.281)} ft)<br>` +
+  `SPD: ${Math.round((vel||0)*3.6)} km/h (${Math.round((vel||0)*1.944)} kts)<br>` +
+  `HDG: ${heading!=null?Math.round(heading)+'°':'N/A'}<br>` +
+  `V/S: ${vRate!=null?(vRate>0?'+':'')+Math.round(vRate*196.85)+' ft/min':'N/A'}` +
+  (squawk?`<br>SQK: ${esc(squawk)}`:'');
 if(aircraftMarkers[icao]){
 const am=aircraftMarkers[icao];
 am.marker.setLatLng(newPos);
 am.marker.getElement()?.querySelector('.ac-rot')?.style?.setProperty('transform',`rotate(${hdg}deg)`);
-am.marker.setPopupContent(`<strong>${esc((callsign||'').trim()||icao)}</strong><br>${esc(country||'')}<br>${catInfo.label}<br>Alt: ${Math.round(alt||0)}m | ${Math.round((vel||0)*3.6)} km/h`);
+am.marker.setPopupContent(popupContent);
 am.positions.push(newPos);
-if(am.positions.length>20)am.positions.shift();
+if(am.positions.length>30)am.positions.shift();
 if(am.trail)igAircraft.removeLayer(am.trail);
 if(am.positions.length>1){am.trail=L.polyline(am.positions,{weight:1.5,opacity:0.3,color:catInfo.color}).addTo(igAircraft)}
 }else{
@@ -2630,7 +2657,7 @@ const icon=L.divIcon({className:'aircraft-icon',
 html:`<div class="ac-rot" style="transform:rotate(${hdg}deg);display:inline-block">${catInfo.svg}</div>`,
 iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
 const marker=L.marker(newPos,{icon}).addTo(igAircraft)
-.bindPopup(`<strong>${esc((callsign||'').trim()||icao)}</strong><br>${esc(country||'')}<br>${catInfo.label}<br>Alt: ${Math.round(alt||0)}m | ${Math.round((vel||0)*3.6)} km/h`);
+.bindPopup(popupContent);
 aircraftMarkers[icao]={marker,trail:null,positions:[newPos],cat:catNum};
 }
 });
@@ -2703,7 +2730,7 @@ function updateSatellitePositions(){
         sat.marker.setLatLng([lat,lng]);
         if(isISS&&posVel.velocity){
           const vel=Math.sqrt(posVel.velocity.x**2+posVel.velocity.y**2+posVel.velocity.z**2);
-          sat.marker.setPopupContent(`<strong>🛰️ ISS (ZARYA)</strong><br>Alt: ${Math.round(alt)} km<br>Vel: ${vel.toFixed(2)} km/s<br>Lat: ${lat.toFixed(4)}<br>Lon: ${lng.toFixed(4)}`);
+          sat.marker.setPopupContent(`<strong>🛰️ ISS (ZARYA)</strong><br>Alt: ${Math.round(alt)} km<br>Vel: ${vel.toFixed(2)} km/s (${Math.round(vel*3600)} km/h)<br>Lat: ${lat.toFixed(5)}<br>Lon: ${lng.toFixed(5)}`);
         }
       }else{
         let icon;
@@ -2720,8 +2747,12 @@ function updateSatellitePositions(){
           });
         }
         const popup=isISS
-          ?`<strong>🛰️ ISS (ZARYA)</strong><br>Alt: ${Math.round(alt)} km<br>Lat: ${lat.toFixed(4)}<br>Lon: ${lng.toFixed(4)}`
-          :`<strong>${esc(sat.name)}</strong><br>Group: ${esc(sat.group)}<br>NORAD: ${esc(String(sat.noradId||''))}<br>Alt: ${Math.round(alt)} km`;
+          ?`<strong>🛰️ ISS (ZARYA)</strong><br>Alt: ${Math.round(alt)} km<br>Lat: ${lat.toFixed(5)}<br>Lon: ${lng.toFixed(5)}`
+          :`<strong>${esc(sat.name)}</strong><br>` +
+           `<span style="color:${sat.color}">${esc(sat.group)}</span><br>` +
+           `NORAD: ${esc(String(sat.noradId||''))}<br>` +
+           `ALT: ${Math.round(alt)} km<br>` +
+           `LAT: ${lat.toFixed(5)} | LON: ${lng.toFixed(5)}`;
         const zIdx=isISS?1000:(sat.group==='Stations'?500:0);
         sat.marker=L.marker([lat,lng],{icon,zIndexOffset:zIdx}).bindPopup(popup);
         sat.marker.addTo(igSatellite);
@@ -2744,9 +2775,12 @@ d.features.forEach(f=>{
 const[lon,lat,depth]=f.geometry.coordinates;
 const mag=f.properties.mag;
 const color=depth>100?'#FF0000':depth>50?'#FF6600':'#FFAA00';
-L.circleMarker([lat,lon],{radius:Math.max(mag*2,4),fillColor:color,color:'#fff',weight:1,fillOpacity:0.7})
+const ageHours=(Date.now()-f.properties.time)/3600000;
+const radius=Math.max(mag*2.5,5);
+const opacity=ageHours<24?0.9:0.5;
+L.circleMarker([lat,lon],{radius,fillColor:color,color:'#fff',weight:1,fillOpacity:opacity})
 .addTo(igEarthquakes)
-.bindPopup(`<strong>M${mag}</strong><br>${esc(f.properties.place||'')}<br>Depth: ${Math.round(depth)} km<br>${new Date(f.properties.time).toLocaleString()}`);
+.bindPopup(`<strong>M${mag.toFixed(1)}</strong><br>${esc(f.properties.place||'')}<br>Depth: ${Math.round(depth)} km<br>${new Date(f.properties.time).toLocaleString()}`);
 });
 if(document.getElementById('layerEarthquakes')?.checked)igEarthquakes.addTo(window.mapInstance);
 updateIntelCounter();
@@ -2769,7 +2803,7 @@ if(!geo||!geo.coordinates)return;
 const[lon,lat]=geo.coordinates;
 L.circleMarker([lat,lon],{radius:6,fillColor:'#FF4500',color:'#FF0000',weight:1,fillOpacity:0.8})
 .addTo(igFires)
-.bindPopup(`<strong>🔥 ${esc(ev.title)}</strong><br>${new Date(geo.date).toLocaleDateString()}`);
+.bindPopup(`<strong>🔥 ${esc(ev.title)}</strong><br>${new Date(geo.date).toLocaleString()}`);
 });
 if(document.getElementById('layerFires')?.checked)igFires.addTo(window.mapInstance);
 updateIntelCounter();
@@ -2825,11 +2859,19 @@ for(const st of stations.slice(0,5)){
     const r=await fetch(`https://api.irail.be/liveboard/?station=${encodeURIComponent(st.name)}&format=json&lang=en`);
     if(!r.ok)continue;
     const d=await r.json();
+    const depList=d.departures?.departure||[];
+    const depSummary=depList.slice(0,3).map(dep=>{
+      const delayMin=Math.round(parseInt(dep.delay||0)/60);
+      const dest=esc(dep.stationinfo?.standardname||dep.station||'?');
+      const veh=esc((dep.vehicle||'').replace(/^BE\.NMBS\./,''));
+      const depTime=new Date(parseInt(dep.time)*1000).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      const delayStr=delayMin>0?` <span style="color:#EF4444">+${delayMin}m</span>`:` <span style="color:#22C55E">on time</span>`;
+      return `${depTime}${delayStr} → ${dest} (${veh})`;
+    }).join('<br>');
     L.marker([st.lat,st.lon],{icon:trainIcon}).addTo(igTrains)
-      .bindPopup(`<strong>🚆 ${esc(d.stationinfo?.standardname||st.name)}</strong><br>${(d.departures?.departure||[]).length} departures`);
+      .bindPopup(`<strong>🚆 ${esc(d.stationinfo?.standardname||st.name)}</strong><br>${depList.length} departures<br><hr style="margin:.3rem 0;border-color:rgba(200,164,78,.2)">${depSummary}`);
     count++;
-    const deps=(d.departures?.departure||[]).slice(0,3);
-    deps.forEach(dep=>{
+    depList.slice(0,3).forEach(dep=>{
       const delay=parseInt(dep.delay||0)/60;
       const timeDiff=(parseInt(dep.time)-Math.floor(Date.now()/1000))/3600;
       if(timeDiff>0&&timeDiff<0.5){
@@ -2840,8 +2882,13 @@ for(const st of stations.slice(0,5)){
           html:'<div style="font-size:11px;line-height:1">🚄</div>',
           iconSize:[11,11],iconAnchor:[5,5]
         });
+        const delayMin=Math.round(delay);
+        const platform=dep.platforminfo?.normal||dep.platform||'?';
+        const dest=esc(dep.stationinfo?.standardname||dep.station||'?');
+        const veh=esc((dep.vehicle||'Train').replace(/^BE\.NMBS\./,''));
+        const delayHtml=delayMin>0?`<br><span style="color:#EF4444">Delay: +${delayMin} min</span>`:`<br><span style="color:#22C55E">On time</span>`;
         L.marker([st.lat+offsetLat,st.lon+offsetLon],{icon:movingIcon}).addTo(igTrains)
-          .bindPopup(`<strong>${esc(dep.vehicle||'Train')}</strong><br>→ ${esc(dep.stationinfo?.standardname||dep.station||'')}<br>Platform ${esc(dep.platform||'?')}${delay>0?`<br><span style="color:#EF4444">+${Math.round(delay)} min</span>`:''}`);
+          .bindPopup(`<strong>${veh}</strong><br>→ ${dest}<br>Platform ${esc(String(platform))}${delayHtml}`);
         count++;
       }
     });
