@@ -299,7 +299,20 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 .map-legend-item{display:flex;align-items:center;gap:.3rem}
 .map-legend-dot{width:10px;height:10px;border-radius:50%}
 .milsym-icon{background:none!important;border:none!important}
+.aircraft-icon{background:none!important;border:none!important}
+.satellite-icon{background:none!important;border:none!important}
 @media(max-width:768px){.map-sidebar{grid-template-columns:1fr}}
+.layer-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:.75rem;font-size:.78rem;max-height:400px;overflow-y:auto}
+.layer-panel h4{font-size:.68rem;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:.5rem;font-weight:700}
+.layer-panel label{display:flex;align-items:center;gap:.5rem;padding:.3rem 0;cursor:pointer;font-weight:500}
+.layer-panel input[type="checkbox"]{accent-color:var(--accent)}
+.intel-counter{position:absolute;top:10px;right:10px;z-index:1000;background:rgba(12,17,23,.85);backdrop-filter:blur(8px);border:1px solid rgba(200,164,78,.2);border-radius:var(--radius-lg);padding:.5rem .75rem;color:#fff;font-size:.7rem;font-family:'JetBrains Mono',monospace;pointer-events:none}
+.intel-counter .ic-row{display:flex;justify-content:space-between;gap:1rem;padding:.15rem 0}
+.intel-counter .ic-val{color:var(--accent);font-weight:700}
+.aq-widget{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:.75rem;margin-top:.75rem}
+.aq-widget h4{font-size:.68rem;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:.5rem;font-weight:700}
+.aq-bar{height:8px;border-radius:4px;margin:.4rem 0}
+.aq-details{display:grid;grid-template-columns:1fr 1fr;gap:.3rem;font-size:.72rem}
 </style>
 </head>
 <body>
@@ -503,7 +516,10 @@ integrations:'Intégrations',sso_config:'Configuration SSO',tak_config:'Configur
 tenant_id:'Tenant ID',client_id:'Client ID',client_secret:'Client Secret',redirect_uri:'URI de redirection',
 tak_server_url:'URL du serveur TAK',save_config:'Sauvegarder',config_saved:'Configuration sauvegardée',
 sso_note:'Contactez votre administrateur IT pour configurer Microsoft Entra ID.',
-tak_note:'Configurez votre serveur TAK pour partager les données en temps réel avec ATAK/iTAK.'
+tak_note:'Configurez votre serveur TAK pour partager les données en temps réel avec ATAK/iTAK.',
+air_quality:'Qualité de l\'air',live_intel:'Renseignement en direct',layers:'Couches',
+aircraft:'Aéronefs',satellites:'Satellites',earthquakes:'Séismes',active_fires:'Feux actifs',
+ships:'Navires',radar:'Radar météo',total_tracks:'Pistes totales'
 },nl:{
 dashboard:'Dashboard',personnel:'Personeel',certifications:'Certificeringen',
 alerts:'Waarschuwingen',reports:'Rapporten',deployments:'Inzetten',settings:'Instellingen',
@@ -583,7 +599,10 @@ integrations:'Integraties',sso_config:'SSO-configuratie',tak_config:'TAK-configu
 tenant_id:'Tenant ID',client_id:'Client ID',client_secret:'Client Secret',redirect_uri:'Omleidings-URI',
 tak_server_url:'TAK Server URL',save_config:'Opslaan',config_saved:'Configuratie opgeslagen',
 sso_note:'Neem contact op met uw IT-beheerder om Microsoft Entra ID te configureren.',
-tak_note:'Configureer uw TAK-server om realtime gegevens te delen met ATAK/iTAK.'
+tak_note:'Configureer uw TAK-server om realtime gegevens te delen met ATAK/iTAK.',
+air_quality:'Luchtkwaliteit',live_intel:'Live inlichtingen',layers:'Lagen',
+aircraft:'Vliegtuigen',satellites:'Satellieten',earthquakes:'Aardbevingen',active_fires:'Actieve branden',
+ships:'Schepen',radar:'Weerradar',total_tracks:'Totaal tracks'
 },en:{
 dashboard:'Dashboard',personnel:'Personnel',certifications:'Certifications',
 alerts:'Alerts',reports:'Reports',deployments:'Deployments',settings:'Settings',
@@ -663,7 +682,10 @@ integrations:'Integrations',sso_config:'SSO Configuration',tak_config:'TAK Confi
 tenant_id:'Tenant ID',client_id:'Client ID',client_secret:'Client Secret',redirect_uri:'Redirect URI',
 tak_server_url:'TAK Server URL',save_config:'Save',config_saved:'Configuration saved',
 sso_note:'Contact your IT administrator to configure Microsoft Entra ID.',
-tak_note:'Configure your TAK Server to share real-time data with ATAK/iTAK.'
+tak_note:'Configure your TAK Server to share real-time data with ATAK/iTAK.',
+air_quality:'Air Quality',live_intel:'Live Intelligence',layers:'Layers',
+aircraft:'Aircraft',satellites:'Satellites',earthquakes:'Earthquakes',active_fires:'Active Fires',
+ships:'Ships',radar:'Weather Radar',total_tracks:'Total Tracks'
 }};
 function t(k){return T[currentLang]?.[k]||T.fr[k]||k}
 function rankLabel(id){const r=RANKS.find(x=>x.id===id);return r?r[currentLang]||r.fr:id||''}
@@ -2276,6 +2298,14 @@ const DEPLOY_COORDS={
 'default':[0,0]
 };
 
+/* --- Intelligence layer groups (module-level) --- */
+let igAircraft=null,igSatellite=null,igEarthquakes=null,igFires=null,igShips=null,igUnits=null,igDeploy=null;
+let igRadar=null;
+let intelCounts={aircraft:0,satellites:1,earthquakes:0,fires:0,ships:0,units:0,deployments:0};
+let mapIntervals=[];
+
+function clearMapIntervals(){mapIntervals.forEach(id=>clearInterval(id));mapIntervals=[]}
+
 function renderMap(){
 const el=document.getElementById('page-map');if(!el)return;
 
@@ -2291,12 +2321,53 @@ return`<div style="display:flex;justify-content:space-between;align-items:center
 unitsListHtml=`<p style="color:var(--text-sec);font-size:.85rem">${t('no_data')}</p>`;
 }
 
-el.innerHTML=`<div class="map-sidebar"><div><div class="map-legend"><div class="map-legend-item"><div class="map-legend-dot" style="background:var(--accent)"></div><span>${t('map_units')}</span></div><div class="map-legend-item"><div class="map-legend-dot" style="background:var(--green-500)"></div><span>${t('active')}</span></div><div class="map-legend-item"><div class="map-legend-dot" style="background:var(--blue-500)"></div><span>${t('planned')}</span></div><div class="map-legend-item"><div class="map-legend-dot" style="background:var(--green-500);opacity:.4"></div><span>${t('map_deployments')}</span></div></div><div id="tacticalMap" class="map-container"></div></div><div><div class="weather-widget" id="weatherWidget">${t('loading')}</div><div class="card" style="margin-top:1rem" id="mapUnitsList"><h4 style="font-size:.7rem;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:.75rem;font-weight:700">${t('map_units')}</h4>${unitsListHtml}</div></div></div>`;
+intelCounts.units=appUnits.length;
+intelCounts.deployments=appDeployments.filter(d=>d.status==='active'||d.status==='planned').length;
 
-if(window.mapInstance){window.mapInstance.remove()}
+el.innerHTML=`
+<div style="display:grid;grid-template-columns:1fr 280px;gap:.75rem;height:calc(100vh - var(--topbar-h) - 3rem)">
+  <div style="position:relative;min-height:400px">
+    <div class="intel-counter" id="intelCounter"></div>
+    <div id="tacticalMap" style="height:100%;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border)"></div>
+  </div>
+  <div style="overflow-y:auto;display:flex;flex-direction:column;gap:.75rem">
+    <div class="layer-panel">
+      <h4>${t('layers')}</h4>
+      <label><input type="checkbox" id="layerAircraft" checked> ✈️ ${t('aircraft')} (OpenSky)</label>
+      <label><input type="checkbox" id="layerSatellite" checked> 🛰️ ISS Satellite</label>
+      <label><input type="checkbox" id="layerEarthquakes"> 🔴 ${t('earthquakes')} (USGS)</label>
+      <label><input type="checkbox" id="layerFires"> 🔥 ${t('active_fires')} (NASA)</label>
+      <label><input type="checkbox" id="layerShips"> 🚢 ${t('ships')} (AIS)</label>
+      <label><input type="checkbox" id="layerRadar"> 🌧️ ${t('radar')}</label>
+      <label><input type="checkbox" id="layerUnits" checked> ⚔️ ${t('map_units')} (NATO)</label>
+      <label><input type="checkbox" id="layerDeploy" checked> 🎯 ${t('map_deployments')}</label>
+    </div>
+    <div class="weather-widget" id="weatherWidget">${t('loading')}</div>
+    <div class="aq-widget" id="aqWidget"><h4>${t('air_quality')}</h4><p style="color:var(--text-sec);font-size:.78rem">${t('loading')}</p></div>
+    <div class="card" id="mapUnitsList">
+      <h4 style="font-size:.7rem;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:.75rem;font-weight:700">${t('map_units')}</h4>
+      ${unitsListHtml}
+    </div>
+  </div>
+</div>`;
+
+/* clear old intervals from previous renderMap calls */
+clearMapIntervals();
+
+if(window.mapInstance){window.mapInstance.remove();window.mapInstance=null}
 window.mapInstance=L.map('tacticalMap').setView([50.85,4.35],7);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(window.mapInstance);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors'}).addTo(window.mapInstance);
 
+/* --- init layer groups --- */
+igAircraft=L.layerGroup();
+igSatellite=L.layerGroup();
+igEarthquakes=L.layerGroup();
+igFires=L.layerGroup();
+igShips=L.layerGroup();
+igUnits=L.layerGroup();
+igDeploy=L.layerGroup();
+
+/* --- populate static unit + deploy layers --- */
 appUnits.forEach(u=>{
 const coords=BASE_COORDS[u.location]||BASE_COORDS['default'];
 const uPers=appPersonnel.filter(p=>p.unit_id===u.id);
@@ -2304,9 +2375,9 @@ const readiness=uPers.length?Math.round(uPers.filter(p=>p.status==='apte').lengt
 try{
 const sym=new ms.Symbol('SFG-UCI----',{size:35,uniqueDesignation:u.abbreviation||u.name,additionalInformation:readiness+'%'});
 const icon=L.divIcon({className:'milsym-icon',html:sym.asSVG(),iconSize:[60,60],iconAnchor:[30,30]});
-L.marker(coords,{icon}).addTo(window.mapInstance).bindPopup(`<strong>${esc(u.name)}</strong><br>${t('personnel')}: ${uPers.length}<br>${t('readiness_rate')}: ${readiness}%`);
+L.marker(coords,{icon}).addTo(igUnits).bindPopup(`<strong>${esc(u.name)}</strong><br>${t('personnel')}: ${uPers.length}<br>${t('readiness_rate')}: ${readiness}%`);
 }catch(e){
-L.marker(coords).addTo(window.mapInstance).bindPopup(`<strong>${esc(u.name)}</strong><br>${uPers.length} ${t('personnel')}`);
+L.marker(coords).addTo(igUnits).bindPopup(`<strong>${esc(u.name)}</strong><br>${uPers.length} ${t('personnel')}`);
 }
 });
 
@@ -2314,10 +2385,233 @@ appDeployments.filter(d=>d.status==='active'||d.status==='planned').forEach(d=>{
 const coords=DEPLOY_COORDS[d.location]||DEPLOY_COORDS['default'];
 if(coords[0]===0)return;
 const color=d.status==='active'?'#22C55E':'#3B82F6';
-L.circleMarker(coords,{radius:8,fillColor:color,color:'#fff',weight:2,fillOpacity:0.8}).addTo(window.mapInstance).bindPopup(`<strong>${esc(d.mission_name)}</strong><br>${esc(d.location||'')}<br>${deployBadge(d.status)}`);
+L.circleMarker(coords,{radius:8,fillColor:color,color:'#fff',weight:2,fillOpacity:0.8}).addTo(igDeploy).bindPopup(`<strong>${esc(d.mission_name)}</strong><br>${esc(d.location||'')}<br>${deployBadge(d.status)}`);
 });
 
+/* add checked layers to map */
+igUnits.addTo(window.mapInstance);
+igDeploy.addTo(window.mapInstance);
+
+/* --- layer toggle listeners --- */
+document.getElementById('layerAircraft')?.addEventListener('change',e=>{
+e.target.checked?igAircraft.addTo(window.mapInstance):window.mapInstance.removeLayer(igAircraft);
+});
+document.getElementById('layerSatellite')?.addEventListener('change',e=>{
+e.target.checked?igSatellite.addTo(window.mapInstance):window.mapInstance.removeLayer(igSatellite);
+});
+document.getElementById('layerEarthquakes')?.addEventListener('change',e=>{
+e.target.checked?igEarthquakes.addTo(window.mapInstance):window.mapInstance.removeLayer(igEarthquakes);
+});
+document.getElementById('layerFires')?.addEventListener('change',e=>{
+e.target.checked?igFires.addTo(window.mapInstance):window.mapInstance.removeLayer(igFires);
+});
+document.getElementById('layerShips')?.addEventListener('change',e=>{
+e.target.checked?igShips.addTo(window.mapInstance):window.mapInstance.removeLayer(igShips);
+});
+document.getElementById('layerRadar')?.addEventListener('change',e=>{
+if(e.target.checked){if(igRadar)igRadar.addTo(window.mapInstance);}
+else{if(igRadar)window.mapInstance.removeLayer(igRadar);}
+});
+document.getElementById('layerUnits')?.addEventListener('change',e=>{
+e.target.checked?igUnits.addTo(window.mapInstance):window.mapInstance.removeLayer(igUnits);
+});
+document.getElementById('layerDeploy')?.addEventListener('change',e=>{
+e.target.checked?igDeploy.addTo(window.mapInstance):window.mapInstance.removeLayer(igDeploy);
+});
+
+/* --- kick off live data fetches --- */
 fetchWeather();
+fetchAirQuality();
+fetchAircraftLayer();
+fetchISSLayer();
+fetchEarthquakesLayer();
+fetchFiresLayer();
+addShipsLayer();
+fetchRadarLayer();
+updateIntelCounter();
+
+/* auto-refresh */
+mapIntervals.push(setInterval(fetchAircraftLayer,15000));
+mapIntervals.push(setInterval(fetchISSLayer,10000));
+}
+
+/* === Intel counter === */
+function updateIntelCounter(){
+const el=document.getElementById('intelCounter');if(!el)return;
+const total=Object.values(intelCounts).reduce((a,b)=>a+b,0);
+el.innerHTML=`
+<div style="font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);margin-bottom:.3rem;font-weight:700">${t('live_intel')}</div>
+<div class="ic-row"><span>✈️ ${t('aircraft')}</span><span class="ic-val">${intelCounts.aircraft}</span></div>
+<div class="ic-row"><span>🛰️ ${t('satellites')}</span><span class="ic-val">${intelCounts.satellites}</span></div>
+<div class="ic-row"><span>🔴 ${t('earthquakes')}</span><span class="ic-val">${intelCounts.earthquakes}</span></div>
+<div class="ic-row"><span>🔥 ${t('active_fires')}</span><span class="ic-val">${intelCounts.fires}</span></div>
+<div class="ic-row"><span>🚢 ${t('ships')}</span><span class="ic-val">${intelCounts.ships}</span></div>
+<div class="ic-row"><span>⚔️ ${t('map_units')}</span><span class="ic-val">${intelCounts.units}</span></div>
+<div class="ic-row"><span>🎯 ${t('map_deployments')}</span><span class="ic-val">${intelCounts.deployments}</span></div>
+<div style="border-top:1px solid rgba(200,164,78,.2);margin-top:.3rem;padding-top:.3rem">
+<div class="ic-row"><span>${t('total_tracks')}</span><span class="ic-val" style="font-size:.85rem">${total}</span></div>
+</div>`;
+}
+
+/* === Aircraft (OpenSky Network) === */
+async function fetchAircraftLayer(){
+if(!igAircraft||!window.mapInstance)return;
+try{
+const r=await fetch('https://opensky-network.org/api/states/all?lamin=49.5&lomin=2.5&lamax=51.5&lomax=6.5');
+if(!r.ok)throw new Error('HTTP '+r.status);
+const d=await r.json();
+igAircraft.clearLayers();
+if(!d.states){updateIntelCounter();return;}
+intelCounts.aircraft=d.states.length;
+d.states.forEach(s=>{
+const [icao,callsign,country,,, lon,lat,alt,,,vel,heading]=s;
+if(lat==null||lon==null)return;
+const rotStyle=heading!=null?`transform:rotate(${heading}deg);display:inline-block`:'display:inline-block';
+const icon=L.divIcon({
+className:'aircraft-icon',
+html:`<div style="${rotStyle}"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700"/></svg></div>`,
+iconSize:[14,14],iconAnchor:[7,7]
+});
+L.marker([lat,lon],{icon}).addTo(igAircraft)
+.bindPopup(`<strong>${esc((callsign||'').trim()||icao)}</strong><br>${esc(country||'')}<br>Alt: ${Math.round(alt||0)} m | ${Math.round((vel||0)*3.6)} km/h`);
+});
+if(document.getElementById('layerAircraft')?.checked)igAircraft.addTo(window.mapInstance);
+updateIntelCounter();
+}catch(e){console.warn('Aircraft fetch failed:',e);}
+}
+
+/* === ISS (Where The ISS At) === */
+async function fetchISSLayer(){
+if(!igSatellite||!window.mapInstance)return;
+try{
+const r=await fetch('https://api.wheretheiss.at/v1/satellites/25544');
+if(!r.ok)throw new Error('HTTP '+r.status);
+const d=await r.json();
+igSatellite.clearLayers();
+const icon=L.divIcon({
+className:'satellite-icon',
+html:'<div style="font-size:18px;line-height:1">🛰️</div>',
+iconSize:[18,18],iconAnchor:[9,9]
+});
+L.marker([d.latitude,d.longitude],{icon}).addTo(igSatellite)
+.bindPopup(`<strong>ISS (ZARYA)</strong><br>Alt: ${Math.round(d.altitude)} km<br>Vel: ${Math.round(d.velocity)} km/h<br>Lat: ${d.latitude.toFixed(2)} | Lon: ${d.longitude.toFixed(2)}`);
+intelCounts.satellites=1;
+if(document.getElementById('layerSatellite')?.checked)igSatellite.addTo(window.mapInstance);
+updateIntelCounter();
+}catch(e){console.warn('ISS fetch failed:',e);}
+}
+
+/* === Earthquakes (USGS) === */
+async function fetchEarthquakesLayer(){
+if(!igEarthquakes||!window.mapInstance)return;
+try{
+const r=await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson');
+if(!r.ok)throw new Error('HTTP '+r.status);
+const d=await r.json();
+igEarthquakes.clearLayers();
+intelCounts.earthquakes=d.features.length;
+d.features.forEach(f=>{
+const[lon,lat,depth]=f.geometry.coordinates;
+const mag=f.properties.mag;
+const color=depth>100?'#FF0000':depth>50?'#FF6600':'#FFAA00';
+L.circleMarker([lat,lon],{radius:Math.max(mag*2,4),fillColor:color,color:'#fff',weight:1,fillOpacity:0.7})
+.addTo(igEarthquakes)
+.bindPopup(`<strong>M${mag}</strong><br>${esc(f.properties.place||'')}<br>Depth: ${Math.round(depth)} km<br>${new Date(f.properties.time).toLocaleString()}`);
+});
+if(document.getElementById('layerEarthquakes')?.checked)igEarthquakes.addTo(window.mapInstance);
+updateIntelCounter();
+}catch(e){console.warn('Earthquakes fetch failed:',e);}
+}
+
+/* === Active Fires (NASA EONET) === */
+async function fetchFiresLayer(){
+if(!igFires||!window.mapInstance)return;
+try{
+const r=await fetch('https://eonet.gsfc.nasa.gov/api/v3/events?category=wildfires&status=open&limit=80');
+if(!r.ok)throw new Error('HTTP '+r.status);
+const d=await r.json();
+igFires.clearLayers();
+intelCounts.fires=d.events?.length||0;
+(d.events||[]).forEach(ev=>{
+if(!ev.geometry||!ev.geometry.length)return;
+const geo=ev.geometry[ev.geometry.length-1];
+if(!geo||!geo.coordinates)return;
+const[lon,lat]=geo.coordinates;
+L.circleMarker([lat,lon],{radius:6,fillColor:'#FF4500',color:'#FF0000',weight:1,fillOpacity:0.8})
+.addTo(igFires)
+.bindPopup(`<strong>🔥 ${esc(ev.title)}</strong><br>${new Date(geo.date).toLocaleDateString()}`);
+});
+if(document.getElementById('layerFires')?.checked)igFires.addTo(window.mapInstance);
+updateIntelCounter();
+}catch(e){console.warn('Fires fetch failed:',e);}
+}
+
+/* === Ships (AIS — static Belgian port markers, real AIS needs server proxy) === */
+function addShipsLayer(){
+if(!igShips||!window.mapInstance)return;
+igShips.clearLayers();
+const ports=[
+{name:'Port d\'Anvers',lat:51.2297,lon:4.4012,note:'Major container hub'},
+{name:'Port de Zeebrugge',lat:51.3300,lon:3.2000,note:'RoRo & LNG terminal'},
+{name:'Port d\'Ostende',lat:51.2297,lon:2.9181,note:'Ferry & offshore base'},
+{name:'Port de Gand',lat:51.0500,lon:3.7167,note:'Industrial port'},
+{name:'Port de Liège',lat:50.6292,lon:5.5797,note:'Inland river port'}
+];
+intelCounts.ships=ports.length;
+const icon=L.divIcon({className:'aircraft-icon',html:'<div style="font-size:16px;line-height:1">🚢</div>',iconSize:[16,16],iconAnchor:[8,8]});
+ports.forEach(p=>{
+L.marker([p.lat,p.lon],{icon}).addTo(igShips)
+.bindPopup(`<strong>${esc(p.name)}</strong><br>${esc(p.note)}<br><em style="font-size:.72rem;color:#999">AIS live feed requires server-side proxy in production</em>`);
+});
+if(document.getElementById('layerShips')?.checked)igShips.addTo(window.mapInstance);
+updateIntelCounter();
+}
+
+/* === Weather Radar (RainViewer) === */
+async function fetchRadarLayer(){
+if(!window.mapInstance)return;
+try{
+const r=await fetch('https://api.rainviewer.com/public/weather-maps.json');
+if(!r.ok)throw new Error('HTTP '+r.status);
+const d=await r.json();
+if(igRadar)window.mapInstance.removeLayer(igRadar);
+const past=d.radar?.past;
+if(!past||!past.length)return;
+const latest=past[past.length-1];
+igRadar=L.tileLayer(d.host+latest.path+'/256/{z}/{x}/{y}/2/1_1.png',{opacity:0.4,zIndex:10,attribution:'RainViewer'});
+if(document.getElementById('layerRadar')?.checked)igRadar.addTo(window.mapInstance);
+}catch(e){console.warn('Radar fetch failed:',e);}
+}
+
+/* === Air Quality (Open-Meteo) === */
+async function fetchAirQuality(){
+try{
+const r=await fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=50.85&longitude=4.35&current=european_aqi,pm2_5,pm10,nitrogen_dioxide&timezone=Europe/Brussels');
+if(!r.ok)throw new Error('HTTP '+r.status);
+const d=await r.json();
+const c=d.current;
+const aqi=Math.round(c.european_aqi||0);
+const color=aqi<=20?'#22C55E':aqi<=40?'#84CC16':aqi<=60?'#EAB308':aqi<=80?'#F97316':'#EF4444';
+const label=aqi<=20?'Good':aqi<=40?'Fair':aqi<=60?'Moderate':aqi<=80?'Poor':'Very Poor';
+const el=document.getElementById('aqWidget');
+if(!el)return;
+el.innerHTML=`
+<h4>${t('air_quality')} — Brussels</h4>
+<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
+<span style="font-size:1.5rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:${color}">${aqi}</span>
+<span style="font-size:.78rem;color:${color};font-weight:600">${esc(label)}</span>
+</div>
+<div class="aq-bar" style="background:linear-gradient(90deg,#22C55E,#84CC16,#EAB308,#F97316,#EF4444)"></div>
+<div class="aq-details">
+<span>PM2.5</span><strong>${(c.pm2_5||0).toFixed(1)} µg/m³</strong>
+<span>PM10</span><strong>${(c.pm10||0).toFixed(1)} µg/m³</strong>
+<span>NO₂</span><strong>${(c.nitrogen_dioxide||0).toFixed(1)} µg/m³</strong>
+</div>`;
+}catch(e){
+console.warn('AQ fetch failed:',e);
+const el=document.getElementById('aqWidget');
+if(el)el.innerHTML=`<h4>${t('air_quality')}</h4><p style="color:var(--text-sec);font-size:.78rem">Offline</p>`;
+}
 }
 
 async function fetchWeather(){
@@ -2331,7 +2625,7 @@ const desc=wmoDesc[c.weather_code]||'N/A';
 const icon=wmoIcon[c.weather_code]||'🌡️';
 const wEl=document.getElementById('weatherWidget');
 if(!wEl)return;
-wEl.innerHTML=`<h4>${t('weather')} — Bourg-Léopold</h4><div class="weather-main"><span style="font-size:2.5rem">${icon}</span><div><div class="weather-temp">${c.temperature_2m}°C</div><div class="weather-desc">${desc}</div></div></div><div class="weather-details"><span>${t('feels_like')}</span><strong>${c.apparent_temperature}°C</strong><span>${t('wind')}</span><strong>${c.wind_speed_10m} km/h</strong><span>${t('humidity')}</span><strong>${c.relative_humidity_2m}%</strong></div>`;
+wEl.innerHTML=`<h4>${t('weather')} — Bourg-Léopold</h4><div class="weather-main"><span style="font-size:2.5rem">${icon}</span><div><div class="weather-temp">${c.temperature_2m}°C</div><div class="weather-desc">${esc(desc)}</div></div></div><div class="weather-details"><span>${t('feels_like')}</span><strong>${c.apparent_temperature}°C</strong><span>${t('wind')}</span><strong>${c.wind_speed_10m} km/h</strong><span>${t('humidity')}</span><strong>${c.relative_humidity_2m}%</strong></div>`;
 }catch(e){
 const wEl=document.getElementById('weatherWidget');
 if(wEl)wEl.innerHTML=`<p style="color:var(--text-sec)">${t('weather')}: offline</p>`;
