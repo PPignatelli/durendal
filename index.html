@@ -224,6 +224,45 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .skeleton-line{height:14px;margin-bottom:.5rem;border-radius:4px}
 .skeleton-card{height:80px;border-radius:var(--radius-lg)}
+/* FORM VALIDATION */
+.form-error{border-color:var(--red-500)!important}
+.form-error-msg{color:var(--red-500);font-size:.72rem;margin-top:.2rem}
+/* SEARCH DROPDOWN */
+.search-wrap{position:relative;display:inline-block}
+.search-results{position:absolute;top:100%;left:0;right:0;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);max-height:350px;overflow-y:auto;z-index:50;display:none}
+.search-results.active{display:block}
+.search-result{padding:.5rem .75rem;cursor:pointer;font-size:.82rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem}
+.search-result:hover{background:rgba(200,164,78,.06)}
+.search-result .sr-type{font-size:.65rem;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);font-weight:700;width:60px;flex-shrink:0}
+/* NOTIFICATION BELL */
+.notif-bell{position:relative;cursor:pointer;background:none;border:1px solid var(--border);border-radius:var(--radius);padding:.35rem .6rem;display:flex;align-items:center;color:var(--text);transition:all .15s}
+.notif-bell:hover{border-color:var(--accent);color:var(--accent)}
+.notif-badge{position:absolute;top:-4px;right:-4px;background:var(--red-500);color:#fff;font-size:.6rem;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700}
+.notif-dropdown{position:absolute;top:100%;right:0;width:320px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);max-height:400px;overflow-y:auto;display:none;z-index:50}
+.notif-dropdown.active{display:block}
+.notif-item{padding:.6rem .75rem;border-bottom:1px solid var(--border);font-size:.8rem;cursor:pointer}
+.notif-item:hover{background:rgba(200,164,78,.04)}
+.notif-item .ni-title{font-weight:600;margin-bottom:.15rem}
+.notif-item .ni-detail{color:var(--text-sec);font-size:.72rem}
+.notif-wrap{position:relative}
+/* CALENDAR */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border)}
+.cal-header{padding:.4rem;text-align:center;font-size:.7rem;font-weight:700;text-transform:uppercase;background:var(--bg-card);color:var(--text-sec)}
+.cal-day{min-height:80px;padding:.4rem;background:var(--bg-card);font-size:.78rem;cursor:pointer;position:relative}
+.cal-day:hover{background:rgba(200,164,78,.04)}
+.cal-day.today{background:rgba(200,164,78,.08)}
+.cal-day.other-month{opacity:.3}
+.cal-day .day-num{font-weight:700;margin-bottom:.25rem;font-family:'JetBrains Mono',monospace}
+.cal-dots{display:flex;flex-wrap:wrap;gap:2px}
+.cal-dot{width:6px;height:6px;border-radius:50%}
+.cal-dot.cert-exp{background:var(--red-500)}
+.cal-dot.cert-warn{background:var(--amber-500)}
+.cal-dot.deploy{background:var(--blue-500)}
+.cal-dot.medical{background:var(--purple-500)}
+.cal-event{font-size:.65rem;padding:1px 3px;border-radius:2px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* UNIT TREE */
+.unit-tree-row{display:flex;align-items:center;padding:.45rem .75rem;border-bottom:1px solid var(--border);font-size:.82rem}
+.unit-tree-row:hover{background:rgba(200,164,78,.03)}
 </style>
 </head>
 <body>
@@ -279,7 +318,17 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 <header class="topbar" id="topbar">
 <button class="hamburger" onclick="toggleSidebar()">&#9776;</button>
 <span class="page-title" id="pageTitle"></span>
-<input type="search" class="topbar-search" id="globalSearch" placeholder="Rechercher...">
+<div class="search-wrap">
+<input type="search" class="topbar-search" id="globalSearch" placeholder="Rechercher..." autocomplete="off">
+<div class="search-results" id="searchResults"></div>
+</div>
+<div class="notif-wrap">
+<button class="notif-bell" id="notifBell" onclick="toggleNotifDropdown()">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+<span class="notif-badge" id="notifBadge" style="display:none">0</span>
+</button>
+<div class="notif-dropdown" id="notifDropdown"></div>
+</div>
 <button class="topbar-btn" onclick="toggleLang()" id="langBtn">NL</button>
 <button class="topbar-btn" onclick="toggleTheme()" id="themeBtn">&#9790;</button>
 </header>
@@ -290,6 +339,7 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 <section id="page-alerts" class="page"></section>
 <section id="page-reports" class="page"></section>
 <section id="page-deployments" class="page"></section>
+<section id="page-calendar" class="page"></section>
 <section id="page-settings" class="page"></section>
 </div>
 </div>
@@ -382,7 +432,14 @@ detail:'Détail',certs_for:'Certifications de',history:'Historique',
 login:'Connexion',signup:'Créer un compte',create_account:'Créer un compte',
 have_account:'Déjà un compte ?',no_account:'Pas encore de compte ?',
 full_name:'Nom complet',password:'Mot de passe',
-missing:'Manquant',of:'sur',person:'personne',persons:'personnes'
+missing:'Manquant',of:'sur',person:'personne',persons:'personnes',
+calendar:'Calendrier',import_csv:'Importer CSV',bulk_renewal:'Renouvellement groupé',
+audit:'Audit',audit_log:'Journal d\'audit',action:'Action',entity:'Entité',user:'Utilisateur',
+import:'Importer',preview:'Aperçu',column_mapping:'Mappage des colonnes',
+select_cert_type:'Sélectionner un type',select_unit:'Sélectionner une unité',
+select_all:'Tout sélectionner',deselect_all:'Tout désélectionner',renew_selected:'Renouveler la sélection',
+no_results:'Aucun résultat',drill_total:'Voir tout le personnel',
+notifications:'Notifications',no_notifications:'Aucune notification'
 },nl:{
 dashboard:'Dashboard',personnel:'Personeel',certifications:'Certificeringen',
 alerts:'Waarschuwingen',reports:'Rapporten',deployments:'Inzetten',settings:'Instellingen',
@@ -434,7 +491,14 @@ detail:'Detail',certs_for:'Certificeringen van',history:'Geschiedenis',
 login:'Inloggen',signup:'Account aanmaken',create_account:'Account aanmaken',
 have_account:'Al een account?',no_account:'Nog geen account?',
 full_name:'Volledige naam',password:'Wachtwoord',
-missing:'Ontbreekt',of:'van',person:'persoon',persons:'personen'
+missing:'Ontbreekt',of:'van',person:'persoon',persons:'personen',
+calendar:'Kalender',import_csv:'CSV importeren',bulk_renewal:'Bulkverlenging',
+audit:'Audit',audit_log:'Auditlogboek',action:'Actie',entity:'Entiteit',user:'Gebruiker',
+import:'Importeren',preview:'Voorbeeld',column_mapping:'Kolomkoppeling',
+select_cert_type:'Type selecteren',select_unit:'Eenheid selecteren',
+select_all:'Alles selecteren',deselect_all:'Alles deselecteren',renew_selected:'Selectie verlengen',
+no_results:'Geen resultaten',drill_total:'Alle personeelsleden bekijken',
+notifications:'Meldingen',no_notifications:'Geen meldingen'
 }};
 function t(k){return T[currentLang]?.[k]||T.fr[k]||k}
 function rankLabel(id){const r=RANKS.find(x=>x.id===id);return r?r[currentLang]||r.fr:id||''}
@@ -509,9 +573,10 @@ certifications:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 alerts:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>',
 deployments:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>',
 reports:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>',
+calendar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
 settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>'
 };
-const NAV_PAGES=['dashboard','personnel','certifications','alerts','deployments','reports','settings'];
+const NAV_PAGES=['dashboard','personnel','certifications','alerts','deployments','reports','calendar','settings'];
 function buildNav(){
 let h='';NAV_PAGES.forEach(p=>{h+=`<button class="nav-item${p===currentPage?' active':''}" onclick="navigateTo('${p}')">${NAV_ICONS[p]}<span>${t(p)}</span></button>`});
 document.getElementById('navItems').innerHTML=h;
@@ -559,7 +624,7 @@ else if(diff<=30)c.status='expiring';
 else c.status='valid';
 });
 }
-function renderAll(){renderDashboard();renderPersonnel();renderCertMatrix();renderAlerts();renderDeployments();renderReports();renderSettings()}
+function renderAll(){renderDashboard();renderPersonnel();renderCertMatrix();renderAlerts();renderDeployments();renderReports();renderCalendar();renderSettings();updateNotifications()}
 
 /* ===== DASHBOARD ===== */
 function renderDashboard(){
@@ -577,12 +642,12 @@ const offset=circ-(rate/100)*circ;
 const gaugeColor=rate>=80?'var(--green-500)':rate>=60?'var(--amber-500)':'var(--red-500)';
 
 let h=`<div class="stat-grid">
-<div class="stat-card"><div class="stat-icon" style="background:var(--navy-700)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div><div class="stat-val">${total}</div><div class="stat-label">${t('total')}</div></div></div>
-<div class="stat-card"><div class="stat-icon" style="background:var(--green-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></div><div><div class="stat-val">${apte}</div><div class="stat-label">${t('apte')}</div></div></div>
-<div class="stat-card"><div class="stat-icon" style="background:var(--blue-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg></div><div><div class="stat-val">${mission}</div><div class="stat-label">${t('en_mission')}</div></div></div>
-<div class="stat-card"><div class="stat-icon" style="background:var(--purple-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg></div><div><div class="stat-val">${formation}</div><div class="stat-label">${t('en_formation')}</div></div></div>
-<div class="stat-card"><div class="stat-icon" style="background:var(--amber-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div><div><div class="stat-val">${conge}</div><div class="stat-label">${t('en_conge')}</div></div></div>
-<div class="stat-card"><div class="stat-icon" style="background:var(--red-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg></div><div><div class="stat-val">${inapte}</div><div class="stat-label">${t('inapte_temp')}</div></div></div>
+<div class="stat-card" style="cursor:pointer" onclick="drillDown('','')"><div class="stat-icon" style="background:var(--steel-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div><div class="stat-val">${total}</div><div class="stat-label">${t('total')}</div></div></div>
+<div class="stat-card" style="cursor:pointer" onclick="drillDown('status','apte')"><div class="stat-icon" style="background:var(--green-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></div><div><div class="stat-val">${apte}</div><div class="stat-label">${t('apte')}</div></div></div>
+<div class="stat-card" style="cursor:pointer" onclick="drillDown('status','en_mission')"><div class="stat-icon" style="background:var(--blue-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg></div><div><div class="stat-val">${mission}</div><div class="stat-label">${t('en_mission')}</div></div></div>
+<div class="stat-card" style="cursor:pointer" onclick="drillDown('status','en_formation')"><div class="stat-icon" style="background:var(--purple-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg></div><div><div class="stat-val">${formation}</div><div class="stat-label">${t('en_formation')}</div></div></div>
+<div class="stat-card" style="cursor:pointer" onclick="drillDown('status','en_conge')"><div class="stat-icon" style="background:var(--amber-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div><div><div class="stat-val">${conge}</div><div class="stat-label">${t('en_conge')}</div></div></div>
+<div class="stat-card" style="cursor:pointer" onclick="drillDown('status','inapte_temp')"><div class="stat-icon" style="background:var(--red-500)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg></div><div><div class="stat-val">${inapte}</div><div class="stat-label">${t('inapte_temp')}</div></div></div>
 </div>`;
 
 h+=`<div style="display:grid;grid-template-columns:280px 1fr;gap:1.5rem;margin-bottom:1.5rem">
@@ -633,6 +698,7 @@ let h=`<div class="toolbar">
 <select onchange="persFilter.unit=this.value;persPage=1;renderPersonnel()"><option value="">${t('all_units')}</option>${appUnits.map(u=>`<option value="${u.id}" ${persFilter.unit===u.id?'selected':''}>${esc(u.name)}</option>`).join('')}</select>
 <span style="flex:1"></span>
 <span style="font-size:.82rem;color:var(--text-sec)">${filtered.length} ${filtered.length>1?t('persons'):t('person')}</span>
+<button class="btn btn-outline btn-sm" onclick="openImportCSVModal()">&#8593; ${t('import_csv')}</button>
 <button class="btn btn-primary btn-sm" onclick="openPersonnelModal()">+ ${t('add')}</button>
 </div>`;
 h+=`<div class="card" style="padding:0;overflow-x:auto"><table>
@@ -698,6 +764,7 @@ openModal(h);
 }
 
 async function savePersonnel(id){
+if(!validateForm([{id:'mLast',required:true},{id:'mFirst',required:true}]))return;
 const data={
 rank:document.getElementById('mRank').value,
 last_name:document.getElementById('mLast').value.trim(),
@@ -714,18 +781,19 @@ blood_type:document.getElementById('mBlood').value||null,
 status_note:document.getElementById('mNote').value.trim()||null,
 owner_id:currentUser.id
 };
-if(!data.last_name||!data.first_name)return showToast('Nom et prénom requis','error');
-let err;
-if(id){({error:err}=await sb.from('personnel').update(data).eq('id',id))}
-else{({error:err}=await sb.from('personnel').insert(data))}
+let err,res;
+if(id){({error:err}=await sb.from('personnel').update(data).eq('id',id));if(!err)logAudit('update','personnel',id,data.last_name+' '+data.first_name)}
+else{({error:err,data:res}=await sb.from('personnel').insert(data).select().single());if(!err)logAudit('create','personnel',res?.id,data.last_name+' '+data.first_name)}
 if(err)return showToast(err.message,'error');
 showToast(t('saved'));closeModal();loadAppData();
 }
 
 async function deletePersonnel(id){
 if(!confirm(t('confirm_delete')))return;
+const p=appPersonnel.find(x=>x.id===id);
 const{error}=await sb.from('personnel').delete().eq('id',id);
 if(error)return showToast(error.message,'error');
+logAudit('delete','personnel',id,(p?.last_name||'')+' '+(p?.first_name||''));
 showToast(t('deleted'));closeModal();closeDetail();loadAppData();
 }
 
@@ -782,6 +850,8 @@ const displayCerts=filterCat?allCerts.filter(c=>c.category===filterCat):mandator
 let h=`<div class="toolbar">
 <select id="matFilterUnit" onchange="renderCertMatrix()"><option value="">${t('all_units')}</option>${appUnits.map(u=>`<option value="${u.id}" ${filterUnit===u.id?'selected':''}>${esc(u.name)}</option>`).join('')}</select>
 <select id="matFilterCat" onchange="renderCertMatrix()"><option value="">${t('all_categories')}</option>${cats.map(c=>`<option value="${c}" ${filterCat===c?'selected':''}>${catLabel(c)}</option>`).join('')}</select>
+<span style="flex:1"></span>
+<button class="btn btn-outline btn-sm" onclick="openBulkRenewalModal()">&#8635; ${t('bulk_renewal')}</button>
 </div>`;
 h+=`<div class="card matrix-wrap"><table><thead><tr><th>${t('personnel')}</th>`;
 displayCerts.forEach(ct=>{const name=currentLang==='nl'?ct.name_nl:ct.name_fr;h+=`<th title="${esc(name)}">${esc(name.length>12?name.slice(0,12)+'…':name)}</th>`});
@@ -828,6 +898,7 @@ const obt=document.getElementById('cObtained').value;
 if(obt){const d=new Date(obt);d.setMonth(d.getMonth()+months);document.getElementById('cExpiry').value=d.toISOString().slice(0,10)}
 }
 async function saveCert(id){
+if(!validateForm([{id:'cObtained',required:true},{id:'cExpiry',required:true}]))return;
 const data={
 personnel_id:document.getElementById('cPersId').value,
 cert_type_id:document.getElementById('cType').value,
@@ -836,12 +907,11 @@ expiry_date:document.getElementById('cExpiry').value,
 notes:document.getElementById('cNotes').value.trim()||null,
 owner_id:currentUser.id
 };
-if(!data.obtained_date||!data.expiry_date)return showToast('Dates requises','error');
 const diff=daysDiff(data.expiry_date);
 data.status=diff<0?'expired':diff<=30?'expiring':'valid';
-let err;
-if(id){({error:err}=await sb.from('certifications').update(data).eq('id',id))}
-else{({error:err}=await sb.from('certifications').insert(data))}
+let err,res;
+if(id){({error:err}=await sb.from('certifications').update(data).eq('id',id));if(!err)logAudit('update','certification',id,data.cert_type_id)}
+else{({error:err,data:res}=await sb.from('certifications').insert(data).select().single());if(!err)logAudit('create','certification',res?.id,data.cert_type_id)}
 if(err)return showToast(err.message,'error');
 showToast(t('saved'));closeModal();loadAppData();
 }
@@ -849,6 +919,7 @@ async function deleteCert(id){
 if(!confirm(t('confirm_delete')))return;
 const{error}=await sb.from('certifications').delete().eq('id',id);
 if(error)return showToast(error.message,'error');
+logAudit('delete','certification',id,'');
 showToast(t('deleted'));closeModal();loadAppData();
 }
 
@@ -931,6 +1002,7 @@ ${d?`<button class="btn btn-danger btn-sm" onclick="deleteDeployment('${d.id}')"
 openModal(h);
 }
 async function saveDeployment(id){
+if(!validateForm([{id:'dMission',required:true}]))return;
 const data={
 mission_name:document.getElementById('dMission').value.trim(),
 operation:document.getElementById('dOp').value.trim()||null,
@@ -942,17 +1014,18 @@ status:document.getElementById('dStatus').value,
 notes:document.getElementById('dNotes').value.trim()||null,
 owner_id:currentUser.id
 };
-if(!data.mission_name)return showToast('Mission name required','error');
-let err;
-if(id){({error:err}=await sb.from('deployments').update(data).eq('id',id))}
-else{({error:err}=await sb.from('deployments').insert(data))}
+let err,res;
+if(id){({error:err}=await sb.from('deployments').update(data).eq('id',id));if(!err)logAudit('update','deployment',id,data.mission_name)}
+else{({error:err,data:res}=await sb.from('deployments').insert(data).select().single());if(!err)logAudit('create','deployment',res?.id,data.mission_name)}
 if(err)return showToast(err.message,'error');
 showToast(t('saved'));closeModal();loadAppData();
 }
 async function deleteDeployment(id){
 if(!confirm(t('confirm_delete')))return;
+const d=appDeployments.find(x=>x.id===id);
 const{error}=await sb.from('deployments').delete().eq('id',id);
 if(error)return showToast(error.message,'error');
+logAudit('delete','deployment',id,d?.mission_name||'');
 showToast(t('deleted'));closeModal();loadAppData();
 }
 
@@ -1036,13 +1109,15 @@ let h=`<div class="tabs">
 <button class="tab" onclick="switchSettingsTab(this,'stCertTypes')">${t('cert_types_mgmt')}</button>
 <button class="tab" onclick="switchSettingsTab(this,'stProfile')">${t('profile')}</button>
 <button class="tab" onclick="switchSettingsTab(this,'stDemo')">${t('demo_data')}</button>
+<button class="tab" onclick="switchSettingsTab(this,'stAudit');renderAuditLog()">${t('audit')}</button>
 </div>`;
-// Units tab
+// Units tab — tree view
 h+=`<div class="tab-content active" id="stUnits">
 <button class="btn btn-primary btn-sm" style="margin-bottom:1rem" onclick="openUnitModal()">+ ${t('add')}</button>
-<div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th>${t('unit')}</th><th>${t('abbreviation')}</th><th>${t('type')}</th><th>${t('commander')}</th><th>${t('location')}</th><th></th></tr></thead><tbody>`;
-appUnits.forEach(u=>{h+=`<tr><td><strong>${esc(u.name)}</strong></td><td>${esc(u.abbreviation||'')}</td><td>${t(u.type)}</td><td>${esc(u.commander_name||'—')}</td><td>${esc(u.location||'—')}</td><td><button class="btn btn-outline btn-sm" onclick="openUnitModal('${u.id}')">${t('edit')}</button></td></tr>`});
-h+=`</tbody></table></div></div>`;
+<div class="card" style="padding:0">`;
+function renderUnitTree(units,parentId,depth){units.filter(u=>u.parent_unit_id===(parentId||null)).forEach(u=>{const indent=depth*1.5;h+=`<div class="unit-tree-row"><span style="padding-left:${indent}rem;flex:1;display:flex;align-items:center;gap:.5rem">${depth>0?'<span style="color:var(--text-sec)">└</span>':''}<strong>${esc(u.name)}</strong><span style="color:var(--text-sec);font-size:.75rem">${esc(u.abbreviation||'')}</span><span class="badge badge-gray" style="font-size:.6rem">${t(u.type)}</span></span><span style="color:var(--text-sec);font-size:.78rem;padding-right:.75rem">${esc(u.commander_name||'—')}</span><button class="btn btn-outline btn-sm" onclick="openUnitModal('${u.id}')">${t('edit')}</button></div>`;renderUnitTree(units,u.id,depth+1);})}
+renderUnitTree(appUnits,null,0);
+h+=`</div></div>`;
 // CertTypes tab
 h+=`<div class="tab-content" id="stCertTypes">
 <button class="btn btn-primary btn-sm" style="margin-bottom:1rem" onclick="openCertTypeModal()">+ ${t('add')}</button>
@@ -1060,6 +1135,8 @@ h+=`<div class="tab-content" id="stDemo"><div class="card" style="max-width:500p
 <p style="margin-bottom:1rem;font-size:.85rem">Génère des données de démonstration : unités, personnel, certifications et déploiements.</p>
 <button class="btn btn-primary" onclick="seedDemoData()">${t('seed_demo')}</button>
 </div></div>`;
+// Audit tab
+h+=`<div class="tab-content" id="stAudit"><div id="auditContent"><p style="color:var(--text-sec);text-align:center;padding:2rem">${t('loading')}</p></div></div>`;
 document.getElementById('page-settings').innerHTML=h;
 }
 function switchSettingsTab(btn,tabId){
@@ -1093,12 +1170,12 @@ ${u?`<button class="btn btn-danger btn-sm" onclick="deleteUnit('${u.id}')">${t('
 openModal(h);
 }
 async function saveUnit(id){
+if(!validateForm([{id:'uName',required:true}]))return;
 const data={name:document.getElementById('uName').value.trim(),abbreviation:document.getElementById('uAbbr').value.trim()||null,type:document.getElementById('uType').value,commander_name:document.getElementById('uCmd').value.trim()||null,location:document.getElementById('uLoc').value.trim()||null,parent_unit_id:document.getElementById('uParent').value||null,owner_id:currentUser.id};
-if(!data.name)return showToast('Nom requis','error');
-let err;if(id){({error:err}=await sb.from('units').update(data).eq('id',id))}else{({error:err}=await sb.from('units').insert(data))}
+let err,res;if(id){({error:err}=await sb.from('units').update(data).eq('id',id));if(!err)logAudit('update','unit',id,data.name)}else{({error:err,data:res}=await sb.from('units').insert(data).select().single());if(!err)logAudit('create','unit',res?.id,data.name)}
 if(err)return showToast(err.message,'error');showToast(t('saved'));closeModal();loadAppData();
 }
-async function deleteUnit(id){if(!confirm(t('confirm_delete')))return;const{error}=await sb.from('units').delete().eq('id',id);if(error)return showToast(error.message,'error');showToast(t('deleted'));closeModal();loadAppData()}
+async function deleteUnit(id){if(!confirm(t('confirm_delete')))return;const u=appUnits.find(x=>x.id===id);const{error}=await sb.from('units').delete().eq('id',id);if(error)return showToast(error.message,'error');logAudit('delete','unit',id,u?.name||'');showToast(t('deleted'));closeModal();loadAppData()}
 
 /* ===== CERT TYPE CRUD ===== */
 function openCertTypeModal(id){
@@ -1124,12 +1201,12 @@ ${ct?`<button class="btn btn-danger btn-sm" onclick="deleteCertType('${ct.id}')"
 openModal(h);
 }
 async function saveCertType(id){
+if(!validateForm([{id:'ctFr',required:true},{id:'ctNl',required:true}]))return;
 const data={name_fr:document.getElementById('ctFr').value.trim(),name_nl:document.getElementById('ctNl').value.trim(),category:document.getElementById('ctCat').value,validity_months:parseInt(document.getElementById('ctMonths').value)||12,mandatory:document.getElementById('ctMand').checked,owner_id:currentUser.id};
-if(!data.name_fr||!data.name_nl)return showToast('Noms requis','error');
-let err;if(id){({error:err}=await sb.from('cert_types').update(data).eq('id',id))}else{({error:err}=await sb.from('cert_types').insert(data))}
+let err,res;if(id){({error:err}=await sb.from('cert_types').update(data).eq('id',id));if(!err)logAudit('update','cert_type',id,data.name_fr)}else{({error:err,data:res}=await sb.from('cert_types').insert(data).select().single());if(!err)logAudit('create','cert_type',res?.id,data.name_fr)}
 if(err)return showToast(err.message,'error');showToast(t('saved'));closeModal();loadAppData();
 }
-async function deleteCertType(id){if(!confirm(t('confirm_delete')))return;const{error}=await sb.from('cert_types').delete().eq('id',id);if(error)return showToast(error.message,'error');showToast(t('deleted'));closeModal();loadAppData()}
+async function deleteCertType(id){if(!confirm(t('confirm_delete')))return;const ct=appCertTypes.find(x=>x.id===id);const{error}=await sb.from('cert_types').delete().eq('id',id);if(error)return showToast(error.message,'error');logAudit('delete','cert_type',id,ct?.name_fr||'');showToast(t('deleted'));closeModal();loadAppData()}
 
 /* ===== DEMO DATA ===== */
 async function seedDemoData(){
@@ -1237,6 +1314,249 @@ loadAppData();
 }catch(e){console.error(e);showToast(e.message||t('error_occurred'),'error')}
 }
 
+/* ===== FORM VALIDATION ===== */
+function validateForm(fields){
+let valid=true;
+fields.forEach(f=>{
+const el=document.getElementById(f.id);if(!el)return;
+const wrap=el.closest('.form-group');
+el.classList.remove('form-error');
+wrap?.querySelector('.form-error-msg')?.remove();
+if(f.required&&!el.value.trim()){
+el.classList.add('form-error');
+const msg=document.createElement('div');msg.className='form-error-msg';msg.textContent='Requis';
+wrap?.appendChild(msg);valid=false;
+}
+});
+return valid;
+}
+
+/* ===== DRILL DOWN ===== */
+function drillDown(filterType,value){
+persFilter.search='';persFilter.status='';persFilter.unit='';persPage=1;
+if(filterType==='status')persFilter.status=value;
+else if(filterType==='unit')persFilter.unit=value;
+navigateTo('personnel');
+renderPersonnel();
+}
+
+/* ===== GLOBAL SEARCH ===== */
+function performGlobalSearch(query){
+const res=document.getElementById('searchResults');if(!res)return;
+if(!query||query.length<2){res.classList.remove('active');return}
+const q=query.toLowerCase();const results=[];
+appPersonnel.filter(p=>(p.last_name+' '+p.first_name+' '+(p.matricule||'')+' '+rankLabel(p.rank)).toLowerCase().includes(q)).slice(0,5).forEach(p=>{results.push({type:'personnel',label:rankLabel(p.rank)+' '+p.last_name+' '+p.first_name,sub:p.unit?.name||'',action:`navigateTo('personnel');setTimeout(()=>openPersonnelDetail('${p.id}'),100)`})});
+appUnits.filter(u=>(u.name+' '+(u.abbreviation||'')).toLowerCase().includes(q)).slice(0,3).forEach(u=>{results.push({type:t('unit'),label:u.name,sub:t(u.type),action:`navigateTo('settings')`})});
+appCerts.filter(c=>{const n=currentLang==='nl'?c.cert_type?.name_nl:c.cert_type?.name_fr;return(n||'').toLowerCase().includes(q)}).slice(0,3).forEach(c=>{const pName=c.personnel?c.personnel.last_name+' '+c.personnel.first_name:'';const n=currentLang==='nl'?c.cert_type?.name_nl:c.cert_type?.name_fr;results.push({type:t('certifications').slice(0,4),label:n||'',sub:pName,action:`navigateTo('certifications')`})});
+appDeployments.filter(d=>(d.mission_name+' '+(d.operation||'')+' '+(d.location||'')).toLowerCase().includes(q)).slice(0,3).forEach(d=>{results.push({type:t('deployments').slice(0,4),label:d.mission_name,sub:d.location||'',action:`navigateTo('deployments')`})});
+if(!results.length){res.innerHTML=`<div class="search-result"><span style="color:var(--text-sec)">${t('no_results')}</span></div>`;res.classList.add('active');return}
+res.innerHTML=results.map(r=>`<div class="search-result" onclick="${r.action};document.getElementById('searchResults').classList.remove('active');document.getElementById('globalSearch').value=''"><span class="sr-type">${esc(r.type)}</span><div><div>${esc(r.label)}</div>${r.sub?`<div style="color:var(--text-sec);font-size:.72rem">${esc(r.sub)}</div>`:''}</div></div>`).join('');
+res.classList.add('active');
+}
+
+/* ===== CSV IMPORT ===== */
+function parseCSV(text){
+const lines=text.trim().split('\n');if(!lines.length)return{headers:[],rows:[]};
+const sep=lines[0].includes(';')?';':',';
+const headers=lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,''));
+const rows=lines.slice(1).map(l=>{const cells=l.split(sep).map(c=>c.trim().replace(/^"|"$/g,''));const obj={};headers.forEach((h,i)=>obj[h]=cells[i]||'');return obj});
+return{headers,rows};
+}
+function openImportCSVModal(){
+const fields=['rank','last_name','first_name','unit','function','status','matricule','email','phone'];
+let h=`<div class="modal-header"><h3>${t('import_csv')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+<div class="modal-body">
+<div class="form-group"><label>${t('import_csv')}</label><input type="file" id="csvFile" accept=".csv" onchange="handleCSVPreview(this)"></div>
+<div id="csvPreview"></div>
+<div id="csvMapping" style="display:none">
+<h4 style="margin:.75rem 0 .5rem;font-size:.78rem;text-transform:uppercase;color:var(--accent)">${t('column_mapping')}</h4>
+<div id="csvMapFields"></div>
+</div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
+<button class="btn btn-primary" id="csvImportBtn" style="display:none" onclick="doImportCSV()">${t('import')}</button>
+</div>`;
+openModal(h);
+}
+function handleCSVPreview(input){
+const file=input.files[0];if(!file)return;
+const reader=new FileReader();
+reader.onload=e=>{
+const{headers,rows}=parseCSV(e.target.result);
+window._csvParsed={headers,rows};
+const preview=document.getElementById('csvPreview');
+const first5=rows.slice(0,5);
+let ph=`<div class="card" style="overflow-x:auto;padding:0;margin:.75rem 0"><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>`;
+first5.forEach(r=>{ph+=`<tr>${headers.map(h=>`<td>${esc(r[h]||'')}</td>`).join('')}</tr>`});
+ph+=`</tbody></table></div>`;
+preview.innerHTML=ph;
+const fields=['rank','last_name','first_name','unit','function','status','matricule','email','phone'];
+const mapDiv=document.getElementById('csvMapFields');
+mapDiv.innerHTML=fields.map(f=>`<div class="form-row" style="margin-bottom:.5rem"><div class="form-group" style="margin:0"><label style="text-transform:none;font-size:.78rem">${t(f==='function'?'function_':f)||f}</label></div><div class="form-group" style="margin:0"><select id="map_${f}"><option value="">— ${t('no_data')} —</option>${headers.map(h=>`<option value="${esc(h)}" ${h.toLowerCase().includes(f.replace('_',''))||h.toLowerCase()===f?'selected':''}>${esc(h)}</option>`).join('')}</select></div></div>`).join('');
+document.getElementById('csvMapping').style.display='block';
+document.getElementById('csvImportBtn').style.display='';
+};
+reader.readAsText(file);
+}
+async function doImportCSV(){
+const{headers,rows}=window._csvParsed||{headers:[],rows:[]};
+if(!rows.length)return showToast(t('no_data'),'error');
+const fields=['rank','last_name','first_name','unit','function','status','matricule','email','phone'];
+const mapping={};fields.forEach(f=>{const sel=document.getElementById('map_'+f);if(sel)mapping[f]=sel.value});
+const inserts=rows.filter(r=>r[mapping.last_name]).map(r=>{
+const unitName=mapping.unit?r[mapping.unit]:'';
+const unit=appUnits.find(u=>u.name.toLowerCase()===unitName.toLowerCase()||u.abbreviation?.toLowerCase()===unitName.toLowerCase());
+return{rank:r[mapping.rank]||'sdt',last_name:r[mapping.last_name]||'',first_name:r[mapping.first_name]||'',unit_id:unit?.id||null,function:r[mapping.function]||null,status:r[mapping.status]||'apte',matricule:r[mapping.matricule]||null,email:r[mapping.email]||null,phone:r[mapping.phone]||null,owner_id:currentUser.id};
+});
+if(!inserts.length)return showToast(t('no_data'),'error');
+const{error}=await sb.from('personnel').insert(inserts);
+if(error)return showToast(error.message,'error');
+logAudit('import','personnel',null,`${inserts.length} records`);
+showToast(`${inserts.length} ${t('persons')} ${t('saved')}`);closeModal();loadAppData();
+}
+
+/* ===== BULK CERT RENEWAL ===== */
+function openBulkRenewalModal(){
+const today=new Date().toISOString().slice(0,10);
+let h=`<div class="modal-header"><h3>${t('bulk_renewal')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+<div class="modal-body">
+<div class="form-row">
+<div class="form-group"><label>${t('cert_type')} *</label><select id="brCertType"><option value="">${t('select_cert_type')}</option>${appCertTypes.map(ct=>{const n=currentLang==='nl'?ct.name_nl:ct.name_fr;return`<option value="${ct.id}" data-months="${ct.validity_months}">${esc(n)}</option>`}).join('')}</select></div>
+<div class="form-group"><label>${t('filter_unit')}</label><select id="brUnit" onchange="renderBulkPersonnelList()"><option value="">${t('all_units')}</option>${appUnits.map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join('')}</select></div>
+</div>
+<div style="display:flex;gap:.5rem;margin-bottom:.5rem">
+<button class="btn btn-outline btn-sm" onclick="bulkSelectAll(true)">${t('select_all')}</button>
+<button class="btn btn-outline btn-sm" onclick="bulkSelectAll(false)">${t('deselect_all')}</button>
+</div>
+<div id="brPersonnelList" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius)"></div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
+<button class="btn btn-primary" onclick="executeBulkRenewal()">${t('renew_selected')}</button>
+</div>`;
+openModal(h);
+renderBulkPersonnelList();
+}
+function renderBulkPersonnelList(){
+const unitId=document.getElementById('brUnit')?.value||'';
+let pers=[...appPersonnel];if(unitId)pers=pers.filter(p=>p.unit_id===unitId);
+const list=document.getElementById('brPersonnelList');if(!list)return;
+list.innerHTML=pers.map(p=>`<label style="display:flex;align-items:center;gap:.5rem;padding:.4rem .75rem;border-bottom:1px solid var(--border);cursor:pointer"><input type="checkbox" class="br-check" value="${p.id}" checked> ${esc(rankLabel(p.rank))} ${esc(p.last_name)} ${esc(p.first_name)}</label>`).join('');
+}
+function bulkSelectAll(sel){document.querySelectorAll('.br-check').forEach(c=>c.checked=sel)}
+async function executeBulkRenewal(){
+const ctSel=document.getElementById('brCertType');
+if(!ctSel?.value)return showToast(t('select_cert_type'),'error');
+const ctId=ctSel.value;
+const months=parseInt(ctSel.selectedOptions[0]?.dataset.months||12);
+const today=new Date();
+const exp=new Date(today);exp.setMonth(exp.getMonth()+months);
+const obtStr=today.toISOString().slice(0,10);
+const expStr=exp.toISOString().slice(0,10);
+const checked=[...document.querySelectorAll('.br-check:checked')].map(c=>c.value);
+if(!checked.length)return showToast(t('no_data'),'error');
+const inserts=checked.map(pId=>({personnel_id:pId,cert_type_id:ctId,obtained_date:obtStr,expiry_date:expStr,status:'valid',owner_id:currentUser.id}));
+const{error}=await sb.from('certifications').upsert(inserts,{onConflict:'personnel_id,cert_type_id'});
+if(error)return showToast(error.message,'error');
+logAudit('bulk_renewal','certification',null,`${checked.length} records`);
+showToast(`${checked.length} ${t('saved')}`);closeModal();loadAppData();
+}
+
+/* ===== AUDIT TRAIL ===== */
+async function logAudit(action,entity,entityId,details){
+try{await sb.from('audit_log').insert({action,entity,entity_id:entityId||null,details:String(details||''),user_id:currentUser?.id,user_email:currentUser?.email,created_at:new Date().toISOString()})}catch(e){}
+}
+async function renderAuditLog(){
+const el=document.getElementById('auditContent');if(!el)return;
+el.innerHTML=`<p style="color:var(--text-sec);text-align:center;padding:2rem">${t('loading')}</p>`;
+const{data,error}=await sb.from('audit_log').select('*').order('created_at',{ascending:false}).limit(100);
+if(error){el.innerHTML=`<p style="color:var(--red-500);padding:1rem">${esc(error.message)}</p>`;return}
+if(!data?.length){el.innerHTML=`<p style="color:var(--text-sec);text-align:center;padding:2rem">${t('no_data')}</p>`;return}
+let h=`<div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th>${t('status')!==t('action')?'Date':''}</th><th>${t('user')}</th><th>${t('action')}</th><th>${t('entity')}</th><th>${t('notes')}</th></tr></thead><tbody>`;
+data.forEach(row=>{h+=`<tr><td style="font-family:'JetBrains Mono',monospace;font-size:.75rem;white-space:nowrap">${row.created_at?new Date(row.created_at).toLocaleString(currentLang==='nl'?'nl-BE':'fr-BE'):''}</td><td style="font-size:.75rem">${esc(row.user_email||'')}</td><td><span class="badge badge-${row.action==='delete'?'red':row.action==='create'?'green':'blue'}">${esc(row.action||'')}</span></td><td>${esc(row.entity||'')}${row.entity_id?`<span style="color:var(--text-sec);font-size:.7rem;margin-left:.25rem">#${esc(String(row.entity_id).slice(0,8))}</span>`:''}</td><td style="font-size:.78rem">${esc(row.details||'')}</td></tr>`});
+h+=`</tbody></table></div>`;
+el.innerHTML=h;
+}
+
+/* ===== NOTIFICATIONS ===== */
+let appNotifications=[];
+function updateNotifications(){
+appNotifications=[];
+appCerts.filter(c=>c.status==='expired').forEach(c=>{const pName=c.personnel?c.personnel.last_name+' '+c.personnel.first_name:'';const n=currentLang==='nl'?c.cert_type?.name_nl:c.cert_type?.name_fr;appNotifications.push({type:'cert_exp',title:esc(n||''),detail:esc(pName)+' — '+t('expired'),action:`navigateTo('alerts')`})});
+appCerts.filter(c=>c.status==='expiring').slice(0,10).forEach(c=>{const pName=c.personnel?c.personnel.last_name+' '+c.personnel.first_name:'';const n=currentLang==='nl'?c.cert_type?.name_nl:c.cert_type?.name_fr;appNotifications.push({type:'cert_warn',title:esc(n||''),detail:esc(pName)+' — '+daysDiff(c.expiry_date)+' '+t('days'),action:`navigateTo('alerts')`})});
+appPersonnel.filter(p=>{const d=daysDiff(p.medical_expiry);return d<=30&&d>-Infinity&&d!==Infinity}).forEach(p=>{appNotifications.push({type:'medical',title:t('medical_expiry'),detail:esc(rankLabel(p.rank)+' '+p.last_name),action:`navigateTo('alerts')`})});
+const badge=document.getElementById('notifBadge');const bell=document.getElementById('notifBell');
+if(badge&&bell){const cnt=appNotifications.length;badge.textContent=cnt>99?'99+':String(cnt);badge.style.display=cnt?'flex':'none'}
+}
+function toggleNotifDropdown(){
+const dd=document.getElementById('notifDropdown');if(!dd)return;
+const isOpen=dd.classList.contains('active');
+document.querySelectorAll('.notif-dropdown,.search-results').forEach(el=>el.classList.remove('active'));
+if(!isOpen){
+if(!appNotifications.length){dd.innerHTML=`<div class="notif-item"><div class="ni-title">${t('no_notifications')}</div></div>`}
+else{dd.innerHTML=appNotifications.slice(0,20).map(n=>`<div class="notif-item" onclick="${n.action};document.getElementById('notifDropdown').classList.remove('active')"><div class="ni-title">${n.title}</div><div class="ni-detail">${n.detail}</div></div>`).join('')}
+dd.classList.add('active');
+}
+}
+
+/* ===== CALENDAR ===== */
+let calYear=new Date().getFullYear(),calMonth=new Date().getMonth();
+function renderCalendar(){
+const el=document.getElementById('page-calendar');if(!el)return;
+const today=new Date();
+const firstDay=new Date(calYear,calMonth,1);
+const lastDay=new Date(calYear,calMonth+1,0);
+const startDow=(firstDay.getDay()+6)%7; // Mon=0
+const totalDays=lastDay.getDate();
+const monthName=firstDay.toLocaleDateString(currentLang==='nl'?'nl-BE':'fr-BE',{month:'long',year:'numeric'});
+const dayNames=currentLang==='nl'?['Lun','Mar','Woe','Don','Vri','Zat','Zon']:['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+
+// Build event map
+const evtMap={};
+function addEvt(dateStr,cls,label){if(!dateStr)return;const d=dateStr.slice(0,10);if(!evtMap[d])evtMap[d]=[];evtMap[d].push({cls,label})}
+appCerts.filter(c=>c.status==='expired').forEach(c=>addEvt(c.expiry_date,'cert-exp',currentLang==='nl'?c.cert_type?.name_nl:c.cert_type?.name_fr));
+appCerts.filter(c=>c.status==='expiring').forEach(c=>addEvt(c.expiry_date,'cert-warn',currentLang==='nl'?c.cert_type?.name_nl:c.cert_type?.name_fr));
+appDeployments.forEach(d=>{addEvt(d.start_date,'deploy',d.mission_name);addEvt(d.end_date,'deploy',d.mission_name)});
+appPersonnel.filter(p=>p.medical_expiry).forEach(p=>addEvt(p.medical_expiry,'medical',p.last_name));
+
+let h=`<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem">
+<button class="btn btn-outline btn-sm" onclick="calMonth--;if(calMonth<0){calMonth=11;calYear--}renderCalendar()">&laquo;</button>
+<span style="font-weight:700;font-size:.95rem;text-transform:capitalize;flex:1;text-align:center">${esc(monthName)}</span>
+<button class="btn btn-outline btn-sm" onclick="calMonth++;if(calMonth>11){calMonth=0;calYear++}renderCalendar()">&raquo;</button>
+</div>`;
+
+h+=`<div class="cal-grid" style="border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">`;
+dayNames.forEach(d=>{h+=`<div class="cal-header">${d}</div>`});
+
+const totalCells=Math.ceil((startDow+totalDays)/7)*7;
+for(let i=0;i<totalCells;i++){
+const dayNum=i-startDow+1;
+const isThisMonth=dayNum>=1&&dayNum<=totalDays;
+const dateStr=isThisMonth?`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`:null;
+const isToday=isThisMonth&&calYear===today.getFullYear()&&calMonth===today.getMonth()&&dayNum===today.getDate();
+const evts=dateStr?evtMap[dateStr]||[]:[];
+h+=`<div class="cal-day${isToday?' today':''}${!isThisMonth?' other-month':''}">`;
+if(isThisMonth||!isThisMonth&&dayNum>=1){
+const d2=i<startDow?new Date(calYear,calMonth,dayNum):isThisMonth?new Date(calYear,calMonth,dayNum):new Date(calYear,calMonth+1,dayNum-totalDays);
+h+=`<div class="day-num">${isThisMonth?dayNum:d2.getDate()}</div>`;
+}
+if(evts.length){
+h+=`<div class="cal-dots">${evts.slice(0,4).map(e=>`<span class="cal-dot ${e.cls}" title="${esc(e.label||'')}"></span>`).join('')}</div>`;
+evts.slice(0,2).forEach(e=>{h+=`<div class="cal-event" style="background:${e.cls==='cert-exp'?'var(--red-500)':e.cls==='cert-warn'?'var(--amber-500)':e.cls==='deploy'?'var(--blue-500)':'var(--purple-500)'};color:#fff;opacity:.85" title="${esc(e.label||'')}">${esc(e.label||'')}</div>`});
+}
+h+=`</div>`;
+}
+h+=`</div>`;
+h+=`<div style="display:flex;gap:1rem;margin-top:.75rem;font-size:.75rem;flex-wrap:wrap">
+<span><span class="cal-dot cert-exp" style="display:inline-block;margin-right:.3rem"></span>${t('expired_certs')}</span>
+<span><span class="cal-dot cert-warn" style="display:inline-block;margin-right:.3rem"></span>${t('expiring_soon')}</span>
+<span><span class="cal-dot deploy" style="display:inline-block;margin-right:.3rem"></span>${t('deployments')}</span>
+<span><span class="cal-dot medical" style="display:inline-block;margin-right:.3rem"></span>${t('medical_expiry')}</span>
+</div>`;
+el.innerHTML=h;
+}
+
 /* ===== GLOBAL EVENTS ===== */
 document.addEventListener('DOMContentLoaded',()=>{
 // Theme
@@ -1258,7 +1578,13 @@ else if(currentPage==='deployments')openDeploymentModal();
 });
 // Global search
 document.getElementById('globalSearch').addEventListener('input',e=>{
-if(currentPage==='personnel'){persFilter.search=e.target.value;persPage=1;renderPersonnel()}
+performGlobalSearch(e.target.value);
+});
+document.getElementById('globalSearch').addEventListener('focus',e=>{if(e.target.value.length>=2)performGlobalSearch(e.target.value)});
+// Close dropdowns on outside click
+document.addEventListener('click',e=>{
+if(!e.target.closest('.search-wrap'))document.getElementById('searchResults')?.classList.remove('active');
+if(!e.target.closest('.notif-wrap'))document.getElementById('notifDropdown')?.classList.remove('active');
 });
 });
 // PWA
