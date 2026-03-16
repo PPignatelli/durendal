@@ -299,8 +299,13 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 .map-legend-item{display:flex;align-items:center;gap:.3rem}
 .map-legend-dot{width:10px;height:10px;border-radius:50%}
 .milsym-icon{background:none!important;border:none!important}
-.aircraft-icon{background:none!important;border:none!important}
+.aircraft-icon{background:none!important;border:none!important;transition:transform .3s linear}
 .satellite-icon{background:none!important;border:none!important}
+.leaflet-marker-icon{transition:transform 8s linear!important}
+.iss-trail{stroke:#8B5CF6;stroke-width:2;stroke-dasharray:6 4;fill:none;opacity:.6}
+.aircraft-trail{stroke:rgba(255,215,0,.3);stroke-width:1;fill:none}
+.pulse-dot{animation:pulse-ring 2s ease-out infinite}
+@keyframes pulse-ring{0%{r:6;opacity:.8}100%{r:18;opacity:0}}
 @media(max-width:768px){.map-sidebar{grid-template-columns:1fr}}
 .layer-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:.75rem;font-size:.78rem;max-height:400px;overflow-y:auto}
 .layer-panel h4{font-size:.68rem;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:.5rem;font-weight:700}
@@ -2304,7 +2309,7 @@ let igRadar=null;
 let intelCounts={aircraft:0,satellites:1,earthquakes:0,fires:0,ships:0,units:0,deployments:0};
 let mapIntervals=[];
 
-function clearMapIntervals(){mapIntervals.forEach(id=>clearInterval(id));mapIntervals=[]}
+function clearMapIntervals(){mapIntervals.forEach(id=>clearInterval(id));mapIntervals=[];aircraftMarkers={};issMarker=null;issTrailPositions=[];issTrailLine=null}
 
 function renderMap(){
 const el=document.getElementById('page-map');if(!el)return;
@@ -2430,9 +2435,12 @@ addShipsLayer();
 fetchRadarLayer();
 updateIntelCounter();
 
-/* auto-refresh */
-mapIntervals.push(setInterval(fetchAircraftLayer,15000));
-mapIntervals.push(setInterval(fetchISSLayer,10000));
+/* auto-refresh — fast intervals for smooth tracking */
+mapIntervals.push(setInterval(fetchAircraftLayer,10000));  // aircraft every 10s
+mapIntervals.push(setInterval(fetchISSLayer,5000));        // ISS every 5s
+mapIntervals.push(setInterval(fetchRadarLayer,120000));    // radar every 2min
+mapIntervals.push(setInterval(fetchAirQuality,300000));    // AQ every 5min
+mapIntervals.push(setInterval(fetchWeather,300000));       // weather every 5min
 }
 
 /* === Intel counter === */
@@ -2453,50 +2461,96 @@ el.innerHTML=`
 </div>`;
 }
 
-/* === Aircraft (OpenSky Network) === */
+/* === Aircraft (OpenSky Network) — smooth animation + trails === */
+let aircraftMarkers={};  // icao -> {marker, trail, positions}
 async function fetchAircraftLayer(){
 if(!igAircraft||!window.mapInstance)return;
 try{
 const r=await fetch('https://opensky-network.org/api/states/all?lamin=49.5&lomin=2.5&lamax=51.5&lomax=6.5');
 if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
-igAircraft.clearLayers();
-if(!d.states){updateIntelCounter();return;}
+if(!d.states){intelCounts.aircraft=0;updateIntelCounter();return;}
 intelCounts.aircraft=d.states.length;
+const seenIcaos=new Set();
 d.states.forEach(s=>{
-const [icao,callsign,country,,, lon,lat,alt,,,vel,heading]=s;
+const [icao,callsign,country,,, lon,lat,alt,,onGround,vel,heading]=s;
 if(lat==null||lon==null)return;
-const rotStyle=heading!=null?`transform:rotate(${heading}deg);display:inline-block`:'display:inline-block';
-const icon=L.divIcon({
-className:'aircraft-icon',
-html:`<div style="${rotStyle}"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700"/></svg></div>`,
-iconSize:[14,14],iconAnchor:[7,7]
+seenIcaos.add(icao);
+const newPos=[lat,lon];
+const hdg=heading||0;
+if(aircraftMarkers[icao]){
+// Smooth move existing marker
+const am=aircraftMarkers[icao];
+am.marker.setLatLng(newPos);
+am.marker.getElement()?.querySelector('div')?.style?.setProperty('transform',`rotate(${hdg}deg)`);
+am.marker.setPopupContent(`<strong>${esc((callsign||'').trim()||icao)}</strong><br>${esc(country||'')}<br>Alt: ${Math.round(alt||0)}m | ${Math.round((vel||0)*3.6)} km/h`);
+am.positions.push(newPos);
+if(am.positions.length>20)am.positions.shift();
+if(am.trail)igAircraft.removeLayer(am.trail);
+if(am.positions.length>1){am.trail=L.polyline(am.positions,{className:'aircraft-trail',weight:1.5,opacity:0.3,color:'#FFD700'}).addTo(igAircraft)}
+}else{
+// New aircraft
+const icon=L.divIcon({className:'aircraft-icon',
+html:`<div style="transform:rotate(${hdg}deg);display:inline-block;transition:transform 10s linear"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700"/></svg></div>`,
+iconSize:[16,16],iconAnchor:[8,8]});
+const marker=L.marker(newPos,{icon}).addTo(igAircraft)
+.bindPopup(`<strong>${esc((callsign||'').trim()||icao)}</strong><br>${esc(country||'')}<br>Alt: ${Math.round(alt||0)}m | ${Math.round((vel||0)*3.6)} km/h`);
+aircraftMarkers[icao]={marker,trail:null,positions:[newPos]};
+}
 });
-L.marker([lat,lon],{icon}).addTo(igAircraft)
-.bindPopup(`<strong>${esc((callsign||'').trim()||icao)}</strong><br>${esc(country||'')}<br>Alt: ${Math.round(alt||0)} m | ${Math.round((vel||0)*3.6)} km/h`);
+// Remove aircraft no longer in feed
+Object.keys(aircraftMarkers).forEach(icao=>{
+if(!seenIcaos.has(icao)){
+igAircraft.removeLayer(aircraftMarkers[icao].marker);
+if(aircraftMarkers[icao].trail)igAircraft.removeLayer(aircraftMarkers[icao].trail);
+delete aircraftMarkers[icao];
+}
 });
-if(document.getElementById('layerAircraft')?.checked)igAircraft.addTo(window.mapInstance);
+if(document.getElementById('layerAircraft')?.checked&&!window.mapInstance.hasLayer(igAircraft))igAircraft.addTo(window.mapInstance);
 updateIntelCounter();
 }catch(e){console.warn('Aircraft fetch failed:',e);}
 }
 
-/* === ISS (Where The ISS At) === */
+/* === ISS (Where The ISS At) — smooth animation + orbit trail === */
+let issMarker=null,issTrailPositions=[],issTrailLine=null;
 async function fetchISSLayer(){
 if(!igSatellite||!window.mapInstance)return;
 try{
 const r=await fetch('https://api.wheretheiss.at/v1/satellites/25544');
 if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
-igSatellite.clearLayers();
-const icon=L.divIcon({
-className:'satellite-icon',
-html:'<div style="font-size:18px;line-height:1">🛰️</div>',
-iconSize:[18,18],iconAnchor:[9,9]
-});
-L.marker([d.latitude,d.longitude],{icon}).addTo(igSatellite)
-.bindPopup(`<strong>ISS (ZARYA)</strong><br>Alt: ${Math.round(d.altitude)} km<br>Vel: ${Math.round(d.velocity)} km/h<br>Lat: ${d.latitude.toFixed(2)} | Lon: ${d.longitude.toFixed(2)}`);
+const newPos=[d.latitude,d.longitude];
+issTrailPositions.push(newPos);
+if(issTrailPositions.length>200)issTrailPositions.shift();
+if(issMarker){
+// Smooth move
+issMarker.setLatLng(newPos);
+issMarker.setPopupContent(`<strong>ISS (ZARYA)</strong><br>Alt: ${Math.round(d.altitude)} km<br>Vel: ${Math.round(d.velocity)} km/h<br>Lat: ${d.latitude.toFixed(4)} | Lon: ${d.longitude.toFixed(4)}<br><span style="font-size:.7rem;color:#8B5CF6">Tracking ${issTrailPositions.length} positions</span>`);
+}else{
+const icon=L.divIcon({className:'satellite-icon',
+html:'<div style="font-size:22px;line-height:1;filter:drop-shadow(0 0 6px #8B5CF6)">🛰️</div>',
+iconSize:[22,22],iconAnchor:[11,11]});
+issMarker=L.marker(newPos,{icon,zIndexOffset:1000}).addTo(igSatellite)
+.bindPopup(`<strong>ISS (ZARYA)</strong><br>Alt: ${Math.round(d.altitude)} km<br>Vel: ${Math.round(d.velocity)} km/h`);
+}
+// Update trail polyline
+if(issTrailLine)igSatellite.removeLayer(issTrailLine);
+if(issTrailPositions.length>1){
+// Handle wrap-around at date line by splitting segments
+const segments=[];let seg=[issTrailPositions[0]];
+for(let i=1;i<issTrailPositions.length;i++){
+const prev=issTrailPositions[i-1],cur=issTrailPositions[i];
+if(Math.abs(cur[1]-prev[1])>180){segments.push(seg);seg=[cur]}
+else{seg.push(cur)}
+}
+segments.push(seg);
+issTrailLine=L.layerGroup();
+segments.forEach(s=>{if(s.length>1)L.polyline(s,{color:'#8B5CF6',weight:2,opacity:0.5,dashArray:'6 4'}).addTo(issTrailLine)});
+issTrailLine.addTo(igSatellite);
+}
+// Add pulse ring at ISS position
 intelCounts.satellites=1;
-if(document.getElementById('layerSatellite')?.checked)igSatellite.addTo(window.mapInstance);
+if(document.getElementById('layerSatellite')?.checked&&!window.mapInstance.hasLayer(igSatellite))igSatellite.addTo(window.mapInstance);
 updateIntelCounter();
 }catch(e){console.warn('ISS fetch failed:',e);}
 }
