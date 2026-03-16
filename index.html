@@ -301,6 +301,7 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 .milsym-icon{background:none!important;border:none!important}
 .aircraft-icon{background:none!important;border:none!important;transition:transform .3s linear}
 .satellite-icon{background:none!important;border:none!important}
+.sat-dot{background:none!important;border:none!important}
 .iss-trail{stroke:#8B5CF6;stroke-width:2;stroke-dasharray:6 4;fill:none;opacity:.6}
 .aircraft-trail{stroke:rgba(255,215,0,.3);stroke-width:1;fill:none}
 .pulse-dot{animation:pulse-ring 2s ease-out infinite}
@@ -412,6 +413,7 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/milsymbol@2.2.0/dist/milsymbol.js"></script>
+<script src="https://unpkg.com/satellite.js@5.0.0/dist/satellite.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ===== CONFIG ===== */
@@ -2308,10 +2310,26 @@ const DEPLOY_COORDS={
 /* --- Intelligence layer groups (module-level) --- */
 let igAircraft=null,igSatellite=null,igEarthquakes=null,igFires=null,igShips=null,igUnits=null,igDeploy=null,igTrains=null;
 let igRadar=null;
-let intelCounts={aircraft:0,satellites:1,earthquakes:0,fires:0,ships:0,trains:0,units:0,deployments:0};
+let intelCounts={aircraft:0,satellites:0,earthquakes:0,fires:0,ships:0,trains:0,units:0,deployments:0};
 let mapIntervals=[];
 
-function clearMapIntervals(){mapIntervals.forEach(id=>clearInterval(id));mapIntervals=[];aircraftMarkers={};issMarker=null;issTrailPositions=[];issTrailLine=null;igTrains=null}
+/* --- Satellite constellation tracker --- */
+const SAT_GROUPS=[
+  {name:'Starlink',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=json',color:'#60A5FA',icon:'·',max:200},
+  {name:'OneWeb',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=oneweb&FORMAT=json',color:'#34D399',icon:'·',max:50},
+  {name:'GPS',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=json',color:'#F59E0B',icon:'◆',max:50},
+  {name:'GLONASS',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=glo-ops&FORMAT=json',color:'#EF4444',icon:'◆',max:50},
+  {name:'Galileo',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=galileo&FORMAT=json',color:'#8B5CF6',icon:'◆',max:50},
+  {name:'Weather',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=weather&FORMAT=json',color:'#06B6D4',icon:'▲',max:30},
+  {name:'Science',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=science&FORMAT=json',color:'#EC4899',icon:'▲',max:30},
+  {name:'Military',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=military&FORMAT=json',color:'#FF1744',icon:'■',max:50},
+  {name:'Stations',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=json',color:'#FFD700',icon:'★',max:20},
+  {name:'Iridium',url:'https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-NEXT&FORMAT=json',color:'#A78BFA',icon:'·',max:50}
+];
+let satRecords=[];   // {name,satrec,group,color,icon,noradId,marker}
+let satLoaded=false;
+
+function clearMapIntervals(){mapIntervals.forEach(id=>clearInterval(id));mapIntervals=[];aircraftMarkers={};issMarker=null;issTrailPositions=[];issTrailLine=null;igTrains=null;satRecords.forEach(s=>{s.marker=null});satLoaded=false}
 
 function renderMap(){
 const el=document.getElementById('page-map');if(!el)return;
@@ -2342,7 +2360,19 @@ el.innerHTML=`
       <h4>${t('layers')}</h4>
       <label><input type="checkbox" id="layerAircraft" checked> ✈️ ${t('aircraft')} (OpenSky)</label>
       <label><input type="checkbox" id="layerTrains"> 🚆 ${t('trains')} (SNCB)</label>
-      <label><input type="checkbox" id="layerSatellite" checked> 🛰️ ISS Satellite</label>
+      <label><input type="checkbox" id="layerSatellite" checked> 🛰️ ${t('satellites')}</label>
+      <div id="satLegend" style="padding-left:1.5rem;font-size:.68rem;margin-top:.2rem">
+        <div style="display:flex;align-items:center;gap:.3rem;padding:.1rem 0"><span style="width:6px;height:6px;border-radius:50%;background:#60A5FA;display:inline-block"></span> Starlink</div>
+        <div style="display:flex;align-items:center;gap:.3rem;padding:.1rem 0"><span style="width:6px;height:6px;border-radius:50%;background:#34D399;display:inline-block"></span> OneWeb</div>
+        <div style="display:flex;align-items:center;gap:.3rem;padding:.1rem 0"><span style="width:6px;height:6px;border-radius:50%;background:#F59E0B;display:inline-block"></span> GPS</div>
+        <div style="display:flex;align-items:center;gap:.3rem;padding:.1rem 0"><span style="width:6px;height:6px;border-radius:50%;background:#EF4444;display:inline-block"></span> GLONASS</div>
+        <div style="display:flex;align-items:center;gap:.3rem;padding:.1rem 0"><span style="width:6px;height:6px;border-radius:50%;background:#8B5CF6;display:inline-block"></span> Galileo</div>
+        <div style="display:flex;align-items:center;gap:.3rem;padding:.1rem 0"><span style="width:6px;height:6px;border-radius:50%;background:#06B6D4;display:inline-block"></span> Weather</div>
+        <div style="display:flex;align-items:center;gap:.3rem;padding:.1rem 0"><span style="width:6px;height:6px;border-radius:50%;background:#EC4899;display:inline-block"></span> Science</div>
+        <div style="display:flex;align-items:center;gap:.3rem;padding:.1rem 0"><span style="width:6px;height:6px;border-radius:50%;background:#FF1744;display:inline-block"></span> Military</div>
+        <div style="display:flex;align-items:center;gap:.3rem;padding:.1rem 0"><span style="width:6px;height:6px;border-radius:50%;background:#FFD700;display:inline-block"></span> Stations (ISS...)</div>
+        <div style="display:flex;align-items:center;gap:.3rem;padding:.1rem 0"><span style="width:6px;height:6px;border-radius:50%;background:#A78BFA;display:inline-block"></span> Iridium</div>
+      </div>
       <label><input type="checkbox" id="layerEarthquakes"> 🔴 ${t('earthquakes')} (USGS)</label>
       <label><input type="checkbox" id="layerFires"> 🔥 ${t('active_fires')} (NASA)</label>
       <label><input type="checkbox" id="layerShips"> 🚢 ${t('ships')} (AIS)</label>
@@ -2435,7 +2465,6 @@ e.target.checked?igDeploy.addTo(window.mapInstance):window.mapInstance.removeLay
 fetchWeather();
 fetchAirQuality();
 fetchAircraftLayer();
-fetchISSLayer();
 fetchEarthquakesLayer();
 fetchFiresLayer();
 addShipsLayer();
@@ -2443,9 +2472,14 @@ fetchRadarLayer();
 fetchTrainsLayer();
 updateIntelCounter();
 
+/* Load satellite TLEs then start propagation */
+loadSatelliteTLEs().then(()=>{
+  updateSatellitePositions();
+  mapIntervals.push(setInterval(updateSatellitePositions,3000)); // update every 3s
+});
+
 /* auto-refresh — fast intervals for smooth tracking */
 mapIntervals.push(setInterval(fetchAircraftLayer,10000));  // aircraft every 10s
-mapIntervals.push(setInterval(fetchISSLayer,5000));        // ISS every 5s
 mapIntervals.push(setInterval(fetchRadarLayer,120000));    // radar every 2min
 mapIntervals.push(setInterval(fetchAirQuality,300000));    // AQ every 5min
 mapIntervals.push(setInterval(fetchWeather,300000));       // weather every 5min
@@ -2544,48 +2578,87 @@ updateIntelCounter();
 }catch(e){console.warn('Aircraft fetch failed:',e);}
 }
 
-/* === ISS (Where The ISS At) — smooth animation + orbit trail === */
-let issMarker=null,issTrailPositions=[],issTrailLine=null;
-async function fetchISSLayer(){
-if(!igSatellite||!window.mapInstance)return;
-try{
-const r=await fetch('https://api.wheretheiss.at/v1/satellites/25544');
-if(!r.ok)throw new Error('HTTP '+r.status);
-const d=await r.json();
-const newPos=[d.latitude,d.longitude];
-issTrailPositions.push(newPos);
-if(issTrailPositions.length>200)issTrailPositions.shift();
-if(issMarker){
-// Smooth move
-issMarker.setLatLng(newPos);
-issMarker.setPopupContent(`<strong>ISS (ZARYA)</strong><br>Alt: ${Math.round(d.altitude)} km<br>Vel: ${Math.round(d.velocity)} km/h<br>Lat: ${d.latitude.toFixed(4)} | Lon: ${d.longitude.toFixed(4)}<br><span style="font-size:.7rem;color:#8B5CF6">Tracking ${issTrailPositions.length} positions</span>`);
-}else{
-const icon=L.divIcon({className:'satellite-icon',
-html:'<div style="font-size:22px;line-height:1;filter:drop-shadow(0 0 6px #8B5CF6)">🛰️</div>',
-iconSize:[22,22],iconAnchor:[11,11]});
-issMarker=L.marker(newPos,{icon,zIndexOffset:1000}).addTo(igSatellite)
-.bindPopup(`<strong>ISS (ZARYA)</strong><br>Alt: ${Math.round(d.altitude)} km<br>Vel: ${Math.round(d.velocity)} km/h`);
+/* === Satellite Constellation Tracker (CelesTrak TLE + satellite.js SGP4) === */
+let issMarker=null,issTrailPositions=[],issTrailLine=null; // kept for backward compat refs in clearMapIntervals
+
+async function loadSatelliteTLEs(){
+  if(satLoaded)return;
+  satRecords=[];
+  for(const group of SAT_GROUPS){
+    try{
+      const r=await fetch(group.url);
+      if(!r.ok)continue;
+      const data=await r.json();
+      const sats=data.slice(0,group.max);
+      sats.forEach(omm=>{
+        try{
+          if(!omm.TLE_LINE1||!omm.TLE_LINE2)return;
+          const satrec=satellite.twoline2satrec(omm.TLE_LINE1,omm.TLE_LINE2);
+          if(!satrec||satrec.error!==0)return;
+          satRecords.push({
+            name:omm.OBJECT_NAME||'Unknown',
+            noradId:omm.NORAD_CAT_ID,
+            group:group.name,
+            color:group.color,
+            icon:group.icon,
+            satrec:satrec,
+            marker:null
+          });
+        }catch(e){/* skip bad TLE */}
+      });
+    }catch(e){console.warn('Failed to load '+group.name+':',e);}
+  }
+  satLoaded=true;
+  intelCounts.satellites=satRecords.length;
+  updateIntelCounter();
+  console.log('Loaded '+satRecords.length+' satellites');
 }
-// Update trail polyline
-if(issTrailLine)igSatellite.removeLayer(issTrailLine);
-if(issTrailPositions.length>1){
-// Handle wrap-around at date line by splitting segments
-const segments=[];let seg=[issTrailPositions[0]];
-for(let i=1;i<issTrailPositions.length;i++){
-const prev=issTrailPositions[i-1],cur=issTrailPositions[i];
-if(Math.abs(cur[1]-prev[1])>180){segments.push(seg);seg=[cur]}
-else{seg.push(cur)}
-}
-segments.push(seg);
-issTrailLine=L.layerGroup();
-segments.forEach(s=>{if(s.length>1)L.polyline(s,{color:'#8B5CF6',weight:2,opacity:0.5,dashArray:'6 4'}).addTo(issTrailLine)});
-issTrailLine.addTo(igSatellite);
-}
-// Add pulse ring at ISS position
-intelCounts.satellites=1;
-if(document.getElementById('layerSatellite')?.checked&&!window.mapInstance.hasLayer(igSatellite))igSatellite.addTo(window.mapInstance);
-updateIntelCounter();
-}catch(e){console.warn('ISS fetch failed:',e);}
+
+function updateSatellitePositions(){
+  if(!igSatellite||!window.mapInstance||!satRecords.length)return;
+  const now=new Date();
+  const gmst=satellite.gstime(now);
+  satRecords.forEach(sat=>{
+    try{
+      const posVel=satellite.propagate(sat.satrec,now);
+      if(!posVel||!posVel.position)return;
+      const geo=satellite.eciToGeodetic(posVel.position,gmst);
+      const lat=satellite.degreesLat(geo.latitude);
+      const lng=satellite.degreesLong(geo.longitude);
+      const alt=geo.height; // km
+      if(isNaN(lat)||isNaN(lng)||!isFinite(lat)||!isFinite(lng))return;
+      // Special treatment for ISS (NORAD 25544) — larger, glowing icon
+      const isISS=(sat.noradId===25544||sat.noradId==='25544'||sat.name==='ISS (ZARYA)');
+      if(sat.marker){
+        sat.marker.setLatLng([lat,lng]);
+        if(isISS&&posVel.velocity){
+          const vel=Math.sqrt(posVel.velocity.x**2+posVel.velocity.y**2+posVel.velocity.z**2);
+          sat.marker.setPopupContent(`<strong>🛰️ ISS (ZARYA)</strong><br>Alt: ${Math.round(alt)} km<br>Vel: ${vel.toFixed(2)} km/s<br>Lat: ${lat.toFixed(4)}<br>Lon: ${lng.toFixed(4)}`);
+        }
+      }else{
+        let icon;
+        if(isISS){
+          icon=L.divIcon({className:'satellite-icon',html:'<div style="font-size:22px;line-height:1;filter:drop-shadow(0 0 8px #FFD700)">🛰️</div>',iconSize:[22,22],iconAnchor:[11,11]});
+        }else{
+          const isNav=sat.group==='GPS'||sat.group==='GLONASS'||sat.group==='Galileo';
+          const isStation=sat.group==='Stations';
+          const size=isStation?12:isNav?8:4;
+          icon=L.divIcon({
+            className:'sat-dot',
+            html:`<div style="width:${size}px;height:${size}px;background:${sat.color};border-radius:50%;opacity:0.8;box-shadow:0 0 ${size}px ${sat.color}"></div>`,
+            iconSize:[size,size],iconAnchor:[size/2,size/2]
+          });
+        }
+        const popup=isISS
+          ?`<strong>🛰️ ISS (ZARYA)</strong><br>Alt: ${Math.round(alt)} km<br>Lat: ${lat.toFixed(4)}<br>Lon: ${lng.toFixed(4)}`
+          :`<strong>${esc(sat.name)}</strong><br>Group: ${esc(sat.group)}<br>NORAD: ${esc(String(sat.noradId||''))}<br>Alt: ${Math.round(alt)} km`;
+        const zIdx=isISS?1000:(sat.group==='Stations'?500:0);
+        sat.marker=L.marker([lat,lng],{icon,zIndexOffset:zIdx}).bindPopup(popup);
+        sat.marker.addTo(igSatellite);
+      }
+    }catch(e){/* skip propagation error */}
+  });
+  if(document.getElementById('layerSatellite')?.checked&&!window.mapInstance.hasLayer(igSatellite))igSatellite.addTo(window.mapInstance);
 }
 
 /* === Earthquakes (USGS) === */
