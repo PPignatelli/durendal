@@ -7,6 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0C1117">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -283,6 +284,22 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 /* UNIT TREE */
 .unit-tree-row{display:flex;align-items:center;padding:.45rem .75rem;border-bottom:1px solid var(--border);font-size:.82rem}
 .unit-tree-row:hover{background:rgba(200,164,78,.03)}
+/* MAP */
+.map-container{height:500px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border);margin-bottom:1rem}
+.map-sidebar{display:grid;grid-template-columns:1fr 300px;gap:1rem}
+.weather-widget{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem}
+.weather-widget h4{font-size:.75rem;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:.75rem;font-weight:700}
+.weather-main{display:flex;align-items:center;gap:1rem;margin-bottom:.75rem}
+.weather-temp{font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace}
+.weather-desc{font-size:.82rem;color:var(--text-sec);text-transform:capitalize}
+.weather-details{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;font-size:.78rem}
+.weather-details span{color:var(--text-sec)}
+.weather-details strong{color:var(--text)}
+.map-legend{display:flex;gap:1rem;margin-bottom:.75rem;font-size:.75rem;flex-wrap:wrap}
+.map-legend-item{display:flex;align-items:center;gap:.3rem}
+.map-legend-dot{width:10px;height:10px;border-radius:50%}
+.milsym-icon{background:none!important;border:none!important}
+@media(max-width:768px){.map-sidebar{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -361,6 +378,7 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 <section id="page-reports" class="page"></section>
 <section id="page-deployments" class="page"></section>
 <section id="page-calendar" class="page"></section>
+<section id="page-map" class="page"></section>
 <section id="page-settings" class="page"></section>
 <section id="page-api" class="page"></section>
 </div>
@@ -375,6 +393,8 @@ tbody tr:hover{background:rgba(200,164,78,.03)}
 <!-- TOAST -->
 <div class="toast-container" id="toastContainer"></div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/milsymbol@2.2.0/dist/milsymbol.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ===== CONFIG ===== */
@@ -474,7 +494,16 @@ trend_title:'Tendance disponibilité (6 mois)',compliance_title:'Rapport de conf
 onboarding_welcome:'Bienvenue sur Durendal',onboarding_subtitle:'Configurez votre espace de travail en quelques étapes',
 onboarding_step1:'1. Créer une unité',onboarding_step2:'2. Types de certifications',onboarding_step3:'3. Ajouter du personnel',onboarding_step4:'4. Importer CSV',
 onboarding_presets:'Certifications standard belges',onboarding_skip:'Passer cette étape',onboarding_next:'Étape suivante',onboarding_done:'Terminer',
-onboarding_cert_added:'Type de certification ajouté !',upload_doc:'Téléverser document',view_doc:'Voir le document',doc_uploaded:'Document téléversé !'
+onboarding_cert_added:'Type de certification ajouté !',upload_doc:'Téléverser document',view_doc:'Voir le document',doc_uploaded:'Document téléversé !',
+map:'Carte tactique',weather:'Météo',wind:'Vent',humidity:'Humidité',temperature:'Température',
+map_units:'Unités sur la carte',map_deployments:'Déploiements',feels_like:'Ressenti',weather_conditions:'Conditions',
+send_email:'Envoyer par email',send_alerts:'Envoyer les alertes',report_sent:'Rapport envoyé',alerts_sent:'alertes envoyées',
+export_cot:'Export CoT (ATAK)',cot_exported:'Fichier CoT exporté',export_ncdf:'Export NCDF (OTAN)',ncdf_exported:'Export NCDF généré',
+integrations:'Intégrations',sso_config:'Configuration SSO',tak_config:'Configuration TAK',email_config:'Configuration Email',
+tenant_id:'Tenant ID',client_id:'Client ID',client_secret:'Client Secret',redirect_uri:'URI de redirection',
+tak_server_url:'URL du serveur TAK',save_config:'Sauvegarder',config_saved:'Configuration sauvegardée',
+sso_note:'Contactez votre administrateur IT pour configurer Microsoft Entra ID.',
+tak_note:'Configurez votre serveur TAK pour partager les données en temps réel avec ATAK/iTAK.'
 },nl:{
 dashboard:'Dashboard',personnel:'Personeel',certifications:'Certificeringen',
 alerts:'Waarschuwingen',reports:'Rapporten',deployments:'Inzetten',settings:'Instellingen',
@@ -545,7 +574,16 @@ trend_title:'Beschikbaarheidstrend (6 maanden)',compliance_title:'Conformiteitsr
 onboarding_welcome:'Welkom bij Durendal',onboarding_subtitle:'Stel uw werkruimte in een paar stappen in',
 onboarding_step1:'1. Eenheid aanmaken',onboarding_step2:'2. Certificeringstypes',onboarding_step3:'3. Personeel toevoegen',onboarding_step4:'4. CSV importeren',
 onboarding_presets:'Belgische standaardcertificeringen',onboarding_skip:'Deze stap overslaan',onboarding_next:'Volgende stap',onboarding_done:'Voltooien',
-onboarding_cert_added:'Certificeringstype toegevoegd!',upload_doc:'Document uploaden',view_doc:'Document bekijken',doc_uploaded:'Document geüpload!'
+onboarding_cert_added:'Certificeringstype toegevoegd!',upload_doc:'Document uploaden',view_doc:'Document bekijken',doc_uploaded:'Document geüpload!',
+map:'Tactische kaart',weather:'Weer',wind:'Wind',humidity:'Vochtigheid',temperature:'Temperatuur',
+map_units:'Eenheden op kaart',map_deployments:'Inzetten',feels_like:'Gevoelstemperatuur',weather_conditions:'Omstandigheden',
+send_email:'Per email verzenden',send_alerts:'Waarschuwingen verzenden',report_sent:'Rapport verzonden',alerts_sent:'waarschuwingen verzonden',
+export_cot:'CoT exporteren (ATAK)',cot_exported:'CoT bestand geëxporteerd',export_ncdf:'NCDF exporteren (NAVO)',ncdf_exported:'NCDF export gegenereerd',
+integrations:'Integraties',sso_config:'SSO-configuratie',tak_config:'TAK-configuratie',email_config:'E-mailconfiguratie',
+tenant_id:'Tenant ID',client_id:'Client ID',client_secret:'Client Secret',redirect_uri:'Omleidings-URI',
+tak_server_url:'TAK Server URL',save_config:'Opslaan',config_saved:'Configuratie opgeslagen',
+sso_note:'Neem contact op met uw IT-beheerder om Microsoft Entra ID te configureren.',
+tak_note:'Configureer uw TAK-server om realtime gegevens te delen met ATAK/iTAK.'
 },en:{
 dashboard:'Dashboard',personnel:'Personnel',certifications:'Certifications',
 alerts:'Alerts',reports:'Reports',deployments:'Deployments',settings:'Settings',
@@ -616,7 +654,16 @@ trend_title:'Readiness trend (6 months)',compliance_title:'Compliance report',co
 onboarding_welcome:'Welcome to Durendal',onboarding_subtitle:'Set up your workspace in a few steps',
 onboarding_step1:'1. Create a unit',onboarding_step2:'2. Certification types',onboarding_step3:'3. Add personnel',onboarding_step4:'4. Import CSV',
 onboarding_presets:'Belgian standard certifications',onboarding_skip:'Skip this step',onboarding_next:'Next step',onboarding_done:'Finish',
-onboarding_cert_added:'Certification type added!',upload_doc:'Upload document',view_doc:'View document',doc_uploaded:'Document uploaded!'
+onboarding_cert_added:'Certification type added!',upload_doc:'Upload document',view_doc:'View document',doc_uploaded:'Document uploaded!',
+map:'Tactical Map',weather:'Weather',wind:'Wind',humidity:'Humidity',temperature:'Temperature',
+map_units:'Units on map',map_deployments:'Deployments',feels_like:'Feels like',weather_conditions:'Conditions',
+send_email:'Send by email',send_alerts:'Send alerts',report_sent:'Report sent',alerts_sent:'alerts sent',
+export_cot:'Export CoT (ATAK)',cot_exported:'CoT file exported',export_ncdf:'Export NCDF (NATO)',ncdf_exported:'NCDF export generated',
+integrations:'Integrations',sso_config:'SSO Configuration',tak_config:'TAK Configuration',email_config:'Email Configuration',
+tenant_id:'Tenant ID',client_id:'Client ID',client_secret:'Client Secret',redirect_uri:'Redirect URI',
+tak_server_url:'TAK Server URL',save_config:'Save',config_saved:'Configuration saved',
+sso_note:'Contact your IT administrator to configure Microsoft Entra ID.',
+tak_note:'Configure your TAK Server to share real-time data with ATAK/iTAK.'
 }};
 function t(k){return T[currentLang]?.[k]||T.fr[k]||k}
 function rankLabel(id){const r=RANKS.find(x=>x.id===id);return r?r[currentLang]||r.fr:id||''}
@@ -716,9 +763,10 @@ alerts:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=
 deployments:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>',
 reports:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>',
 calendar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+map:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>',
 settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>'
 };
-const NAV_PAGES=['dashboard','personnel','certifications','alerts','deployments','reports','calendar','settings'];
+const NAV_PAGES=['dashboard','personnel','certifications','alerts','deployments','reports','calendar','map','settings'];
 function buildNav(){
 let h='';NAV_PAGES.forEach(p=>{h+=`<button class="nav-item${p===currentPage?' active':''}" onclick="navigateTo('${p}')">${NAV_ICONS[p]}<span>${t(p)}</span></button>`});
 document.getElementById('navItems').innerHTML=h;
@@ -736,6 +784,7 @@ document.querySelectorAll('.nav-item')[NAV_PAGES.indexOf(p)]?.classList.add('act
 document.getElementById('pageTitle').textContent=t(p)||t('api_docs');
 closeDetail();
 if(window.innerWidth<768)document.getElementById('sidebar').classList.remove('open');
+if(p==='map')setTimeout(()=>{if(window.mapInstance)window.mapInstance.invalidateSize()},200);
 }
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open')}
 function toggleTheme(){const html=document.documentElement;const isDark=html.dataset.theme==='dark';html.dataset.theme=isDark?'light':'dark';localStorage.setItem('bf_theme',html.dataset.theme);document.getElementById('themeBtn').innerHTML=isDark?'&#9790;':'&#9788;'}
@@ -775,7 +824,7 @@ else if(diff<=30)c.status='expiring';
 else c.status='valid';
 });
 }
-function renderAll(){renderDashboard();renderPersonnel();renderCertMatrix();renderAlerts();renderDeployments();renderReports();renderCalendar();renderSettings();renderAPIPage();updateNotifications()}
+function renderAll(){renderDashboard();renderPersonnel();renderCertMatrix();renderAlerts();renderDeployments();renderReports();renderCalendar();renderMap();renderSettings();renderAPIPage();updateNotifications()}
 
 /* ===== DASHBOARD ===== */
 function renderDashboard(){
@@ -1110,7 +1159,8 @@ h+=`<div class="alert-card"><div class="alert-info"><span class="alert-name">${e
 return h+'</div>';
 }
 
-let h=`<div class="alert-section"><h3><span class="badge badge-red">${expired.length}</span> ${t('expired_certs')}</h3>${alertCards(expired,'red')}</div>`;
+let h=`<div class="toolbar" style="margin-bottom:1.25rem"><span style="flex:1"></span><button class="btn btn-outline btn-sm" onclick="sendCertExpiryAlerts()">&#9993; ${t('send_alerts')}</button></div>`;
+h+=`<div class="alert-section"><h3><span class="badge badge-red">${expired.length}</span> ${t('expired_certs')}</h3>${alertCards(expired,'red')}</div>`;
 h+=`<div class="alert-section"><h3><span class="badge badge-amber">${exp30.length}</span> ${t('expiring_30')}</h3>${alertCards(exp30,'amber')}</div>`;
 h+=`<div class="alert-section"><h3><span class="badge badge-blue">${exp90.length}</span> ${t('expiring_90')}</h3>${alertCards(exp90,'blue')}</div>`;
 h+=`<div class="alert-section"><h3><span class="badge badge-purple">${medAlerts.length}</span> ${t('medical_alerts')}</h3>`;
@@ -1203,6 +1253,9 @@ let h=`<div class="toolbar">
 <button class="btn btn-outline btn-sm" onclick="exportPDF()">${t('export_pdf')}</button>
 <button class="btn btn-outline btn-sm" onclick="exportAllReportsPDF()">${t('export_pdf')} (all)</button>
 <button class="btn btn-outline btn-sm" onclick="exportCSV()">${t('export_csv')}</button>
+<button class="btn btn-outline btn-sm" onclick="sendWeeklyReport()">&#9993; ${t('send_email')}</button>
+<button class="btn btn-outline btn-sm" onclick="exportCoT()">${t('export_cot')}</button>
+<button class="btn btn-outline btn-sm" onclick="exportNCDF()">${t('export_ncdf')}</button>
 </div><div class="card" id="reportOutput"><p style="color:var(--text-sec);text-align:center;padding:2rem">${t('select_report')}</p></div>`;
 document.getElementById('page-reports').innerHTML=h;
 }
@@ -1277,6 +1330,144 @@ const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
 const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();
 }
 
+/* ===== EMAIL / ALERTS ===== */
+async function sendAlertEmail(to, subject, htmlBody) {
+  try {
+    const { data, error } = await sb.functions.invoke('send-email', {
+      body: { to, subject, html: htmlBody }
+    });
+    if (error) throw error;
+    return true;
+  } catch(e) { console.warn('Email send failed:', e); return false; }
+}
+
+async function sendWeeklyReport() {
+  const to = currentUser?.email;
+  if (!to) return showToast(t('error_occurred'), 'error');
+  const reportHtml = genReadinessReport();
+  const today = new Date().toISOString().slice(0, 10);
+  const subject = `Durendal — ${t('weekly_readiness')} — ${today}`;
+  const ok = await sendAlertEmail(to, subject, `<html><body style="font-family:sans-serif;padding:2rem">${reportHtml}</body></html>`);
+  if (ok) showToast(t('report_sent'));
+}
+
+async function sendCertExpiryAlerts() {
+  const expiring7 = appCerts.filter(c => { const d = daysDiff(c.expiry_date); return d >= 0 && d <= 7; });
+  if (!expiring7.length) { showToast('0 ' + t('alerts_sent'), 'info'); return; }
+  let sent = 0;
+  for (const c of expiring7) {
+    const p = appPersonnel.find(x => x.id === c.personnel_id);
+    if (!p?.email) continue;
+    const certName = currentLang === 'nl' ? c.cert_type?.name_nl : c.cert_type?.name_fr;
+    const daysLeft = daysDiff(c.expiry_date);
+    const htmlBody = `<html><body style="font-family:sans-serif;padding:2rem">
+<h2 style="color:#C8A44E">Durendal — Certification Alert</h2>
+<p>${esc(rankLabel(p.rank))} ${esc(p.first_name)} ${esc(p.last_name)},</p>
+<p>Your certification <strong>${esc(certName || '')}</strong> expires in <strong>${daysLeft} ${t('days')}</strong> (${c.expiry_date}).</p>
+<p>Please contact your unit commander to schedule renewal.</p>
+</body></html>`;
+    const ok = await sendAlertEmail(p.email, `Durendal — Cert Expiry: ${certName}`, htmlBody);
+    if (ok) sent++;
+  }
+  showToast(`${sent} ${t('alerts_sent')}`);
+}
+
+/* ===== CoT EXPORT ===== */
+function exportCoT() {
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  xml += '<events>\n';
+  appUnits.forEach(u => {
+    const coords = BASE_COORDS?.[u.location] || [50.85, 4.35];
+    const uPers = appPersonnel.filter(p => p.unit_id === u.id);
+    const readiness = uPers.length ? Math.round(uPers.filter(p=>p.status==='apte').length / uPers.length * 100) : 0;
+    const now = new Date().toISOString();
+    const stale = new Date(Date.now() + 3600000).toISOString();
+    xml += `  <event version="2.0" uid="durendal-unit-${u.id}" type="a-f-G-U-C-I" time="${now}" start="${now}" stale="${stale}" how="m-g">\n`;
+    xml += `    <point lat="${coords[0]}" lon="${coords[1]}" hae="0" ce="50" le="50"/>\n`;
+    xml += `    <detail>\n`;
+    xml += `      <contact callsign="${esc(u.abbreviation || u.name)}"/>\n`;
+    xml += `      <remarks>Readiness: ${readiness}% | Personnel: ${uPers.length} | ${esc(u.name)}</remarks>\n`;
+    xml += `    </detail>\n`;
+    xml += `  </event>\n`;
+  });
+  xml += '</events>';
+  const blob = new Blob([xml], {type: 'application/xml'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'durendal-cot-' + new Date().toISOString().slice(0,10) + '.xml';
+  a.click();
+  showToast(t('cot_exported'), 'success');
+}
+
+/* ===== NCDF EXPORT ===== */
+function exportNCDF() {
+  const ncdf = {
+    metadata: {
+      standard: 'NATO Core Data Framework (ADatP-5659)',
+      classification: 'UNCLASSIFIED',
+      originatorCountry: 'BEL',
+      dateCreated: new Date().toISOString(),
+      system: 'Durendal Force Readiness Tracker'
+    },
+    organizations: appUnits.map(u => ({
+      id: u.id,
+      name: u.name,
+      shortName: u.abbreviation,
+      type: u.type,
+      location: u.location,
+      parentId: u.parent_unit_id
+    })),
+    personnel: appPersonnel.map(p => ({
+      id: p.id,
+      rank: p.rank,
+      surname: p.last_name,
+      givenName: p.first_name,
+      serviceNumber: p.matricule,
+      organizationId: p.unit_id,
+      dutyPosition: p.function,
+      readinessStatus: p.status === 'apte' ? 'COMBAT_READY' :
+                       p.status === 'en_mission' ? 'DEPLOYED' :
+                       p.status === 'en_formation' ? 'IN_TRAINING' :
+                       p.status === 'en_conge' ? 'ON_LEAVE' :
+                       p.status === 'inapte_temp' ? 'TEMPORARILY_UNFIT' :
+                       p.status === 'inapte_def' ? 'PERMANENTLY_UNFIT' : 'TRANSFERRED',
+      medicalExpiryDate: p.medical_expiry
+    })),
+    qualifications: appCerts.map(c => ({
+      id: c.id,
+      personnelId: c.personnel_id,
+      qualificationType: c.cert_type_id,
+      dateObtained: c.obtained_date,
+      dateExpiry: c.expiry_date,
+      status: c.status === 'valid' ? 'CURRENT' : c.status === 'expiring' ? 'EXPIRING' : 'EXPIRED'
+    })),
+    qualificationTypes: appCertTypes.map(ct => ({
+      id: ct.id,
+      nameFR: ct.name_fr,
+      nameNL: ct.name_nl,
+      category: ct.category,
+      validityMonths: ct.validity_months,
+      mandatory: ct.mandatory
+    })),
+    missions: appDeployments.map(d => ({
+      id: d.id,
+      missionName: d.mission_name,
+      operation: d.operation,
+      location: d.location,
+      personnelId: d.personnel_id,
+      startDate: d.start_date,
+      endDate: d.end_date,
+      status: d.status
+    }))
+  };
+  const blob = new Blob([JSON.stringify(ncdf, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'durendal-ncdf-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  showToast(t('ncdf_exported'), 'success');
+}
+
 /* ===== SETTINGS ===== */
 function renderSettings(){
 let h=`<div class="tabs">
@@ -1287,6 +1478,7 @@ ${isAdmin()?`<button class="tab" onclick="switchSettingsTab(this,'stDemo')">${t(
 <button class="tab" onclick="switchSettingsTab(this,'stAudit');renderAuditLog()">${t('audit')}</button>
 <button class="tab" onclick="switchSettingsTab(this,'stBackup')">${t('backup')}</button>
 <button class="tab" onclick="switchSettingsTab(this,'stPrivacy')">${t('privacy')}</button>
+<button class="tab" onclick="switchSettingsTab(this,'stIntegrations')">${t('integrations')}</button>
 </div>`;
 // Units tab — tree view
 h+=`<div class="tab-content active" id="stUnits">
@@ -1352,6 +1544,40 @@ h+=`<div class="tab-content" id="stPrivacy"><div class="card" style="max-width:5
 <button class="btn btn-danger btn-sm" onclick="gdprDelete()">${t('privacy_delete')}</button>
 </div>
 </div></div>`;
+// Integrations tab
+const ssoConf=JSON.parse(localStorage.getItem('dur_sso_config')||'{}');
+const takConf=JSON.parse(localStorage.getItem('dur_tak_config')||'{}');
+const emailConf=JSON.parse(localStorage.getItem('dur_email_config')||'{}');
+h+=`<div class="tab-content" id="stIntegrations">
+<div class="card" style="max-width:560px;margin-bottom:1rem">
+<h4 style="font-size:.8rem;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;letter-spacing:1px">${t('sso_config')}</h4>
+<p style="font-size:.82rem;color:var(--text-sec);margin-bottom:1rem">${t('sso_note')}</p>
+<div class="form-row">
+<div class="form-group"><label>${t('tenant_id')}</label><input id="ssoTenantId" value="${esc(ssoConf.tenantId||'')}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
+<div class="form-group"><label>${t('client_id')}</label><input id="ssoClientId" value="${esc(ssoConf.clientId||'')}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>${t('client_secret')}</label><input type="password" id="ssoClientSecret" value="${esc(ssoConf.clientSecret||'')}" placeholder="••••••••••••"></div>
+<div class="form-group"><label>${t('redirect_uri')}</label><input id="ssoRedirectUri" value="${esc(ssoConf.redirectUri||window.location.origin+'/auth/callback')}" placeholder="https://..."></div>
+</div>
+<button class="btn btn-primary btn-sm" onclick="saveIntegrationConfig('sso')">${t('save_config')}</button>
+</div>
+<div class="card" style="max-width:560px;margin-bottom:1rem">
+<h4 style="font-size:.8rem;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;letter-spacing:1px">${t('tak_config')}</h4>
+<p style="font-size:.82rem;color:var(--text-sec);margin-bottom:1rem">${t('tak_note')}</p>
+<div class="form-group"><label>${t('tak_server_url')}</label><input id="takServerUrl" value="${esc(takConf.serverUrl||'')}" placeholder="https://tak.example.com:8443"></div>
+<div class="form-group"><label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;text-transform:none;letter-spacing:0"><input type="checkbox" id="takAutoPush" ${takConf.autoPush?'checked':''}> Enable CoT auto-push</label></div>
+<div style="display:flex;gap:.5rem">
+<button class="btn btn-primary btn-sm" onclick="saveIntegrationConfig('tak')">${t('save_config')}</button>
+<button class="btn btn-outline btn-sm" onclick="exportCoT()">${t('export_cot')}</button>
+</div>
+</div>
+<div class="card" style="max-width:560px">
+<h4 style="font-size:.8rem;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;letter-spacing:1px">${t('email_config')}</h4>
+<div class="form-group"><label>Resend API Key</label><input type="password" id="emailResendKey" value="${esc(emailConf.resendKey||'')}" placeholder="re_xxxxxxxxxxxxxxxxxxxxxxxx"></div>
+<button class="btn btn-primary btn-sm" onclick="saveIntegrationConfig('email')">${t('save_config')}</button>
+</div>
+</div>`;
 document.getElementById('page-settings').innerHTML=h;
 }
 async function saveNotifPrefs(){
@@ -1360,6 +1586,19 @@ const{error}=await sb.from('profiles').upsert({id:currentUser.id,...prefs},{onCo
 if(error)return showToast(error.message,'error');
 Object.assign(currentProfile,prefs);
 showToast(t('saved'));
+}
+function saveIntegrationConfig(type){
+if(type==='sso'){
+const cfg={tenantId:document.getElementById('ssoTenantId')?.value.trim()||'',clientId:document.getElementById('ssoClientId')?.value.trim()||'',clientSecret:document.getElementById('ssoClientSecret')?.value||'',redirectUri:document.getElementById('ssoRedirectUri')?.value.trim()||''};
+localStorage.setItem('dur_sso_config',JSON.stringify(cfg));
+}else if(type==='tak'){
+const cfg={serverUrl:document.getElementById('takServerUrl')?.value.trim()||'',autoPush:document.getElementById('takAutoPush')?.checked||false};
+localStorage.setItem('dur_tak_config',JSON.stringify(cfg));
+}else if(type==='email'){
+const cfg={resendKey:document.getElementById('emailResendKey')?.value||''};
+localStorage.setItem('dur_email_config',JSON.stringify(cfg));
+}
+showToast(t('config_saved'));
 }
 function switchSettingsTab(btn,tabId){
 btn.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
@@ -2020,6 +2259,83 @@ h+=`<div style="display:flex;gap:1rem;margin-top:.75rem;font-size:.75rem;flex-wr
 <span><span class="cal-dot medical" style="display:inline-block;margin-right:.3rem"></span>${t('medical_expiry')}</span>
 </div>`;
 el.innerHTML=h;
+}
+
+
+/* ===== MAP ===== */
+const BASE_COORDS={
+'Bourg-Léopold':[51.12,5.28],'Marche-en-Famenne':[50.22,5.34],'Brasschaat':[51.30,4.49],
+'Amay':[50.55,5.32],'Tournai':[50.60,3.39],'Peutie':[50.93,4.43],
+'Neder-Over-Heembeek':[50.89,4.37],'Evere':[50.87,4.40],'Heverlee':[50.86,4.69],
+'Ieper':[50.85,2.89],'Lombardsijde':[51.15,2.75],'Florennes':[50.24,4.65],
+'Kleine Brogel':[51.17,5.47],'Beauvechain':[50.76,4.77],'Zeebrugge':[51.33,3.20],
+'default':[50.85,4.35]
+};
+const DEPLOY_COORDS={
+'Bamako, Mali':[12.63,-8.00],'Tapa, Estonie':[59.26,26.02],'Naqoura, Liban':[33.12,35.14],
+'default':[0,0]
+};
+
+function renderMap(){
+const el=document.getElementById('page-map');if(!el)return;
+
+let unitsListHtml='';
+if(appUnits.length){
+unitsListHtml=appUnits.map(u=>{
+const uPers=appPersonnel.filter(p=>p.unit_id===u.id);
+const readiness=uPers.length?Math.round(uPers.filter(p=>p.status==='apte').length/uPers.length*100):0;
+const color=readiness>=80?'var(--green-500)':readiness>=60?'var(--amber-500)':'var(--red-500)';
+return`<div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--border);font-size:.82rem"><div><span style="font-weight:600">${esc(u.abbreviation||u.name)}</span><span style="color:var(--text-sec);font-size:.72rem;margin-left:.5rem">${esc(u.name)}</span></div><div style="display:flex;align-items:center;gap:.5rem"><span style="font-size:.72rem;color:var(--text-sec)">${uPers.length} ${t('personnel')}</span><span style="font-size:.72rem;font-weight:700;color:${color}">${readiness}%</span></div></div>`;
+}).join('');
+}else{
+unitsListHtml=`<p style="color:var(--text-sec);font-size:.85rem">${t('no_data')}</p>`;
+}
+
+el.innerHTML=`<div class="map-sidebar"><div><div class="map-legend"><div class="map-legend-item"><div class="map-legend-dot" style="background:var(--accent)"></div><span>${t('map_units')}</span></div><div class="map-legend-item"><div class="map-legend-dot" style="background:var(--green-500)"></div><span>${t('active')}</span></div><div class="map-legend-item"><div class="map-legend-dot" style="background:var(--blue-500)"></div><span>${t('planned')}</span></div><div class="map-legend-item"><div class="map-legend-dot" style="background:var(--green-500);opacity:.4"></div><span>${t('map_deployments')}</span></div></div><div id="tacticalMap" class="map-container"></div></div><div><div class="weather-widget" id="weatherWidget">${t('loading')}</div><div class="card" style="margin-top:1rem" id="mapUnitsList"><h4 style="font-size:.7rem;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:.75rem;font-weight:700">${t('map_units')}</h4>${unitsListHtml}</div></div></div>`;
+
+if(window.mapInstance){window.mapInstance.remove()}
+window.mapInstance=L.map('tacticalMap').setView([50.85,4.35],7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(window.mapInstance);
+
+appUnits.forEach(u=>{
+const coords=BASE_COORDS[u.location]||BASE_COORDS['default'];
+const uPers=appPersonnel.filter(p=>p.unit_id===u.id);
+const readiness=uPers.length?Math.round(uPers.filter(p=>p.status==='apte').length/uPers.length*100):0;
+try{
+const sym=new ms.Symbol('SFG-UCI----',{size:35,uniqueDesignation:u.abbreviation||u.name,additionalInformation:readiness+'%'});
+const icon=L.divIcon({className:'milsym-icon',html:sym.asSVG(),iconSize:[60,60],iconAnchor:[30,30]});
+L.marker(coords,{icon}).addTo(window.mapInstance).bindPopup(`<strong>${esc(u.name)}</strong><br>${t('personnel')}: ${uPers.length}<br>${t('readiness_rate')}: ${readiness}%`);
+}catch(e){
+L.marker(coords).addTo(window.mapInstance).bindPopup(`<strong>${esc(u.name)}</strong><br>${uPers.length} ${t('personnel')}`);
+}
+});
+
+appDeployments.filter(d=>d.status==='active'||d.status==='planned').forEach(d=>{
+const coords=DEPLOY_COORDS[d.location]||DEPLOY_COORDS['default'];
+if(coords[0]===0)return;
+const color=d.status==='active'?'#22C55E':'#3B82F6';
+L.circleMarker(coords,{radius:8,fillColor:color,color:'#fff',weight:2,fillOpacity:0.8}).addTo(window.mapInstance).bindPopup(`<strong>${esc(d.mission_name)}</strong><br>${esc(d.location||'')}<br>${deployBadge(d.status)}`);
+});
+
+fetchWeather();
+}
+
+async function fetchWeather(){
+try{
+const res=await fetch('https://api.open-meteo.com/v1/forecast?latitude=51.12&longitude=5.28&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m&timezone=Europe/Brussels');
+const data=await res.json();
+const c=data.current;
+const wmoDesc={0:'Ciel dégagé',1:'Principalement dégagé',2:'Partiellement nuageux',3:'Couvert',45:'Brouillard',48:'Brouillard givrant',51:'Bruine légère',53:'Bruine modérée',55:'Bruine dense',61:'Pluie légère',63:'Pluie modérée',65:'Pluie forte',71:'Neige légère',73:'Neige modérée',75:'Neige forte',80:'Averses légères',81:'Averses modérées',82:'Averses violentes',95:'Orage',96:'Orage avec grêle'};
+const wmoIcon={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌧️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',95:'⛈️',96:'⛈️'};
+const desc=wmoDesc[c.weather_code]||'N/A';
+const icon=wmoIcon[c.weather_code]||'🌡️';
+const wEl=document.getElementById('weatherWidget');
+if(!wEl)return;
+wEl.innerHTML=`<h4>${t('weather')} — Bourg-Léopold</h4><div class="weather-main"><span style="font-size:2.5rem">${icon}</span><div><div class="weather-temp">${c.temperature_2m}°C</div><div class="weather-desc">${desc}</div></div></div><div class="weather-details"><span>${t('feels_like')}</span><strong>${c.apparent_temperature}°C</strong><span>${t('wind')}</span><strong>${c.wind_speed_10m} km/h</strong><span>${t('humidity')}</span><strong>${c.relative_humidity_2m}%</strong></div>`;
+}catch(e){
+const wEl=document.getElementById('weatherWidget');
+if(wEl)wEl.innerHTML=`<p style="color:var(--text-sec)">${t('weather')}: offline</p>`;
+}
 }
 
 /* ===== GLOBAL EVENTS ===== */
